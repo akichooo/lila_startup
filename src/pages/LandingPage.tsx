@@ -9,6 +9,9 @@ import {
   Star,
   ArrowRight,
   CheckCircle2,
+  Mic,
+  Volume2,
+  Users,
 } from "lucide-react";
 
 const features = [
