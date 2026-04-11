@@ -75,7 +75,7 @@ export function StatCard({
   );
 }
 
-export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+export function SectionHeader({ title, action }: { title: ReactNode; action?: ReactNode }) {
   return (
     <div className="bridge-section-header">
       <h3>{title}</h3>
