@@ -12,6 +12,9 @@ import { Shield, Loader2, Mic, Square, Upload, CheckCircle2 } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import Blobby from "@/components/mascots/Blobby";
+import Tangerine from "@/components/mascots/Tangerine";
+import ZapZing from "@/components/mascots/ZapZing";
 
 const TOPICS = [
   "Emotions",

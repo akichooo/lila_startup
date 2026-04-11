@@ -11,41 +11,45 @@ import {
   Volume2,
   MonitorSmartphone,
 } from "lucide-react";
+import Blobby from "@/components/mascots/Blobby";
+import Tangerine from "@/components/mascots/Tangerine";
+import ZapZing from "@/components/mascots/ZapZing";
 
 type MascotState = "idle" | "listening" | "thinking" | "speaking";
 type AgeGroup = "6-8" | "9-10" | "11-12";
 
-const AGE_THEMES: Record<AgeGroup, { label: string; mascotName: string; personality: string; desc: string; sampleQ: string; badges: string; gradient: string }> = {
+const AGE_THEMES: Record<AgeGroup, { label: string; mascotName: string; personality: string; desc: string; sampleQ: string; badges: string; gradient: string; accent: string }> = {
   "6-8": {
-    label: "Ages 6–8 · Bip Mode",
-    mascotName: "Bip",
-    personality: "Playful & Warm",
+    label: "Ages 6–8 · Blobby",
+    mascotName: "Blobby",
+    personality: "Playful & Curious",
     desc: "For younger learners, Lila uses simple language, lots of encouragement, and a bouncy, energetic voice persona to keep discussion fun and inclusive.",
     sampleQ: '"What does being kind look like? Can you show me with your hands?"',
     badges: "Simpler language · Short turns · High encouragement",
-    gradient: "linear-gradient(135deg, #7DD3FC, #FCD34D)",
+    gradient: "linear-gradient(135deg, #E0F0FF 0%, #FFF8D6 100%)",
+    accent: "#6BAAFF",
   },
   "9-10": {
-    label: "Ages 9–10 · Flo & Pip Mode",
-    mascotName: "Flo & Pip",
+    label: "Ages 9–10 · Tangerine",
+    mascotName: "Tangerine",
     personality: "Curious & Collaborative",
     desc: "For this age group, Lila encourages collaborative reasoning, invites comparisons, and gently introduces nuance to build critical thinking.",
     sampleQ: '"If two people both follow the rules but get different results, is that still fair? What do you think?"',
     badges: "Collaborative prompts · Nuance building · Balanced turns",
-    gradient: "linear-gradient(135deg, #6EE7B7, #C4B5FD)",
+    gradient: "linear-gradient(135deg, #FFF3E0 0%, #ECFDF5 100%)",
+    accent: "#FF8C00",
   },
   "11-12": {
-    label: "Ages 11–12 · Cleo Mode",
-    mascotName: "Cleo",
+    label: "Ages 11–12 · Zap & Zing",
+    mascotName: "Zap & Zing",
     personality: "Thoughtful & Grounded",
     desc: "For older students, Lila introduces layered concepts, invites reflection on multiple perspectives, and respects more complex emotional registers.",
     sampleQ: '"Is it possible to disagree with a rule and still think it\'s fair? How would you argue both sides?"',
     badges: "Multi-perspective prompts · Reflective tone · Complex concepts",
-    gradient: "linear-gradient(135deg, #FDBA74, #A78BFA)",
+    gradient: "linear-gradient(135deg, #F0FFF4 0%, #FFF0F9 100%)",
+    accent: "#4CAF50",
   },
 };
-
-const MASCOT_EMOJIS: Record<AgeGroup, string> = { "6-8": "🤖", "9-10": "🌿", "11-12": "🐱" };
 
 const SAMPLE_CONVERSATION = [
   { speaker: "lila", text: "Good morning, everyone! Today we're going to talk about something really interesting — fairness. Has anyone ever felt like something wasn't quite fair? You can share when you're ready." },
@@ -66,7 +70,15 @@ const ROADMAP = [
   { phase: "Phase 4", title: "Adaptive voice personas", desc: "Age-specific voice tone, pacing, and vocabulary models.", status: "planned" as const, date: "Q4 2026" },
 ];
 
-function WaveformBars({ active, variant }: { active: boolean; variant: "listening" | "speaking" }) {
+function MascotComponent({ ageGroup, state, size = 200 }: { ageGroup: AgeGroup; state: MascotState; size?: number }) {
+  switch (ageGroup) {
+    case "6-8": return <Blobby size={size} state={state} />;
+    case "9-10": return <Tangerine size={size} state={state} />;
+    case "11-12": return <ZapZing size={size} state={state} />;
+  }
+}
+
+function WaveformBars({ active, variant, accent }: { active: boolean; variant: "listening" | "speaking"; accent?: string }) {
   const barsRef = useRef<(HTMLDivElement | null)[]>([]);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -94,7 +106,7 @@ function WaveformBars({ active, variant }: { active: boolean; variant: "listenin
           key={i}
           ref={(el) => { barsRef.current[i] = el; }}
           className="w-1 rounded-full transition-[height] duration-[80ms] ease-linear"
-          style={{ height: "4px", backgroundColor: variant === "speaking" ? "#FB7185" : "#A78BFA" }}
+          style={{ height: "4px", backgroundColor: accent || (variant === "speaking" ? "#FB7185" : "#A78BFA") }}
         />
       ))}
     </div>
@@ -102,13 +114,7 @@ function WaveformBars({ active, variant }: { active: boolean; variant: "listenin
 }
 
 function MascotDisplay({ ageGroup, state }: { ageGroup: AgeGroup; state: MascotState }) {
-  const emoji = MASCOT_EMOJIS[ageGroup];
-  const stateStyles: Record<MascotState, string> = {
-    idle: "translate-y-0 rotate-0",
-    listening: "-translate-y-1 -rotate-3",
-    thinking: "translate-y-0 rotate-0",
-    speaking: "-translate-y-1 rotate-0 brightness-105",
-  };
+  const theme = AGE_THEMES[ageGroup];
   const bubbleText: Record<MascotState, string> = {
     idle: "Tap the mic to begin a preview conversation…",
     listening: "Listening…",
@@ -127,26 +133,15 @@ function MascotDisplay({ ageGroup, state }: { ageGroup: AgeGroup; state: MascotS
               width: `${140 + i * 40}px`,
               height: `${140 + i * 40}px`,
               animationDelay: `${i * 0.8}s`,
-              border: "2px solid rgba(167,139,250,0.2)",
+              border: `2px solid ${theme.accent}33`,
             }}
           />
         ))}
       </div>
-      <div
-        className={`relative z-10 flex h-[200px] w-[200px] items-center justify-center rounded-full text-8xl transition-all duration-300 ease-out ${stateStyles[state]} ${state === "idle" ? "voice-mascot-bob" : ""}`}
-        style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.1), rgba(251,113,133,0.05))" }}
-      >
-        {emoji}
-        <div className="absolute -top-2 right-2 text-2xl">🎧</div>
-        {state === "thinking" && (
-          <div className="absolute -top-8 flex gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-3 w-3 rounded-full animate-bounce" style={{ backgroundColor: "#A78BFA", opacity: 0.5, animationDelay: `${i * 0.4}s` }} />
-            ))}
-          </div>
-        )}
+      <div className="relative z-10 flex h-[200px] w-[200px] items-center justify-center transition-all duration-300">
+        <MascotComponent ageGroup={ageGroup} state={state} size={160} />
       </div>
-      <div className="mt-4 rounded-2xl bg-white px-4 py-2 text-sm max-w-xs text-center" style={{ border: "1.5px solid #EDE9FF", color: "#7C6FAA", boxShadow: "0 2px 12px rgba(167,139,250,0.08)" }}>
+      <div className="mt-4 rounded-2xl bg-white px-4 py-2 text-sm max-w-xs text-center" style={{ border: `1.5px solid ${theme.accent}33`, color: "#7C6FAA", boxShadow: `0 2px 12px ${theme.accent}14` }}>
         {state === "listening" && <span className="voice-ellipsis">{bubbleText[state]}</span>}
         {state !== "listening" && bubbleText[state]}
       </div>
@@ -176,6 +171,7 @@ export default function VoiceRoomPage() {
   const [conversationVisible, setConversationVisible] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const theme = AGE_THEMES[ageGroup];
 
   const handleMicClick = useCallback(() => {
     if (mascotState !== "idle") return;
@@ -255,16 +251,18 @@ export default function VoiceRoomPage() {
               <StateChip state={mascotState} />
             </div>
 
-            {/* Age selector tabs */}
+            {/* Age selector tabs with mascots */}
             <div className="flex gap-1 rounded-2xl p-1 mb-8" style={{ background: "#EDE9FF" }}>
               {(["6-8", "9-10", "11-12"] as AgeGroup[]).map((ag) => (
                 <button
                   key={ag}
                   onClick={() => setAgeGroup(ag)}
-                  className="rounded-xl px-4 py-2 text-sm font-bold transition-all"
-                  style={ageGroup === ag ? { background: AGE_THEMES[ag].gradient, color: "white", boxShadow: "0 2px 8px rgba(167,139,250,0.2)" } : { color: "#7C6FAA" }}
+                  className="rounded-xl px-4 py-2 text-sm font-bold transition-all flex items-center gap-2"
+                  style={ageGroup === ag ? { background: AGE_THEMES[ag].gradient, color: "#2D1B69", boxShadow: "0 2px 8px rgba(167,139,250,0.2)" } : { color: "#7C6FAA" }}
                 >
-                  {AGE_THEMES[ag].label}
+                  <MascotComponent ageGroup={ag} state="idle" size={28} />
+                  <span className="hidden sm:inline">{AGE_THEMES[ag].label}</span>
+                  <span className="sm:hidden">{ag}</span>
                 </button>
               ))}
             </div>
@@ -272,7 +270,7 @@ export default function VoiceRoomPage() {
             <MascotDisplay ageGroup={ageGroup} state={mascotState} />
 
             <div className="mt-6 w-full max-w-xs">
-              <WaveformBars active={mascotState === "listening" || mascotState === "speaking"} variant={mascotState === "speaking" ? "speaking" : "listening"} />
+              <WaveformBars active={mascotState === "listening" || mascotState === "speaking"} variant={mascotState === "speaking" ? "speaking" : "listening"} accent={theme.accent} />
             </div>
 
             {/* Mic button */}
@@ -282,9 +280,9 @@ export default function VoiceRoomPage() {
               className="mt-6 flex h-20 w-20 items-center justify-center rounded-full transition-all duration-200"
               style={
                 mascotState === "idle"
-                  ? { background: "white", border: "2px solid #A78BFA", color: "#A78BFA", cursor: "pointer" }
+                  ? { background: "white", border: `2px solid ${theme.accent}`, color: theme.accent, cursor: "pointer" }
                   : mascotState === "listening"
-                  ? { background: "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)", border: "2px solid transparent", color: "white" }
+                  ? { background: `linear-gradient(135deg, ${theme.accent} 0%, #FB7185 100%)`, border: "2px solid transparent", color: "white" }
                   : { background: "#EDE9FF", border: "2px solid #EDE9FF", color: "#A89DC4", cursor: "default" }
               }
               aria-label="Simulate voice interaction"
@@ -332,7 +330,7 @@ export default function VoiceRoomPage() {
           </div>
         </section>
 
-        {/* Age Cards */}
+        {/* Age Cards with mascots */}
         <section>
           <h2 className="font-extrabold text-center mb-8" style={{ color: "#2D1B69" }}>Lila adapts to your students' age</h2>
           <div className="grid md:grid-cols-3 gap-6">
@@ -340,8 +338,8 @@ export default function VoiceRoomPage() {
               const t = AGE_THEMES[ag];
               return (
                 <div key={ag} className="lila-card overflow-hidden">
-                  <div className="-mx-6 -mt-6 mb-5 px-6 py-5" style={{ background: t.gradient }}>
-                    <span className="text-5xl">{MASCOT_EMOJIS[ag]}</span>
+                  <div className="-mx-6 -mt-6 mb-5 px-6 py-5 flex items-center justify-center" style={{ background: t.gradient }}>
+                    <MascotComponent ageGroup={ag} state="idle" size={100} />
                   </div>
                   <h3 className="font-bold mb-1" style={{ color: "#2D1B69" }}>{t.personality}</h3>
                   <p className="text-sm leading-relaxed mb-3" style={{ color: "#7C6FAA" }}>{t.desc}</p>
@@ -427,7 +425,11 @@ export default function VoiceRoomPage() {
               </p>
             </div>
             <div className="lila-card flex flex-col items-center justify-center py-10 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #F5F3FF 0%, #FDF2F8 100%)" }}>
-              <span className="text-7xl mb-4">🎧</span>
+              <div className="flex items-end gap-4 mb-4">
+                <Blobby size={60} state="idle" />
+                <Tangerine size={70} state="idle" />
+                <ZapZing size={60} state="idle" />
+              </div>
               <div className="flex items-center gap-6 mt-2">
                 {["📱", "📱", "📱", "📱"].map((d, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
@@ -470,7 +472,9 @@ export default function VoiceRoomPage() {
             <button className="bg-white font-bold rounded-full px-6 py-3 shrink-0 transition-all hover:scale-105" style={{ color: "#7C3AED" }}>Join Waitlist</button>
           </div>
           <p className="text-white/60 text-sm mt-6">Already on the waitlist? We'll be in touch soon. 💜</p>
-          <div className="absolute bottom-4 right-8 text-6xl opacity-60 hidden md:block voice-mascot-bob">💜</div>
+          <div className="absolute bottom-4 right-8 opacity-60 hidden md:block">
+            <Blobby size={80} state="idle" />
+          </div>
         </section>
       </div>
     </AppShell>
