@@ -648,9 +648,8 @@ export default function CreateSessionPage() {
                   </div>
                 )}
 
-                {uploaded && (
+                {uploaded && analysisState === "idle" && (
                   <div className="flex flex-col items-center gap-4 w-full max-w-md">
-                    {/* Mascot waving */}
                     <div className="voice-mascot-bob">
                       <div
                         className="h-16 w-16 rounded-full flex items-center justify-center text-3xl"
@@ -666,7 +665,6 @@ export default function CreateSessionPage() {
                       ✅ Recording saved to Lila Cloud!
                     </p>
 
-                    {/* Public URL box */}
                     {publicUrl && (
                       <div className="w-full">
                         <label className="text-xs font-semibold mb-1 block" style={{ color: "#7C6FAA" }}>
@@ -702,14 +700,41 @@ export default function CreateSessionPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-3 pt-2">
-                      <button className="lila-btn-secondary" onClick={() => navigate("/dashboard")}>
+                    <div className="flex gap-3 pt-2 w-full">
+                      <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
+                        <Send className="h-4 w-4" /> Send to Analysis
+                      </button>
+                    </div>
+                    <div className="flex gap-3 w-full">
+                      <button className="lila-btn-secondary flex-1" onClick={() => navigate("/dashboard")}>
                         Go to Dashboard
                       </button>
-                      <button className="lila-btn-primary" onClick={() => navigate("/live")}>
+                      <button className="lila-btn-secondary flex-1" onClick={() => navigate("/live")}>
                         View Live Monitor
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {uploaded && analysisState === "analyzing" && (
+                  <div className="w-full max-w-md">
+                    <AnalysisProcessingScreen onComplete={() => {
+                      const result = generateAnalysis({
+                        groupId: selectedGroup || GROUPS[0].id,
+                        sessionName: sessionName || "Live Session",
+                        topic: topic || "Discussion Session",
+                        duration: parseInt(duration),
+                        audioUrl: publicUrl,
+                      });
+                      setAnalysisResult(result);
+                      setAnalysisState("done");
+                    }} />
+                  </div>
+                )}
+
+                {uploaded && analysisState === "done" && analysisResult && (
+                  <div className="w-full">
+                    <AnalysisResultPreview result={analysisResult} />
                   </div>
                 )}
               </div>
