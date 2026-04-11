@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AnalysisProvider } from "@/contexts/AnalysisContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -26,25 +27,28 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/sessions" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/sessions/create" element={<ProtectedRoute><CreateSessionPage /></ProtectedRoute>} />
-            <Route path="/students" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
-            <Route path="/live" element={<ProtectedRoute><LiveMonitorPage /></ProtectedRoute>} />
-            <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
-            <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
-            <Route path="/privacy" element={<ProtectedRoute><PrivacyPage /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/voice-room" element={<ProtectedRoute><VoiceRoomPage /></ProtectedRoute>} />
-            <Route path="/upload" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
-            <Route path="/upload-audio" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        <AnalysisProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/sessions" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="/sessions/create" element={<ProtectedRoute><CreateSessionPage /></ProtectedRoute>} />
+              <Route path="/students" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
+              <Route path="/live" element={<ProtectedRoute><LiveMonitorPage /></ProtectedRoute>} />
+              <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
+              <Route path="/summary/:id" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
+              <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
+              <Route path="/privacy" element={<ProtectedRoute><PrivacyPage /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/voice-room" element={<ProtectedRoute><VoiceRoomPage /></ProtectedRoute>} />
+              <Route path="/upload" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
+              <Route path="/upload-audio" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AnalysisProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

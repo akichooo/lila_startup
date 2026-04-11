@@ -6,6 +6,7 @@ import { SESSIONS, GROUPS, FOLLOW_UPS, STUDENTS } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Users, ClipboardList, Info, Plus, CheckCircle2 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { useAnalysis } from "@/contexts/AnalysisContext";
 
 const sparkData1 = [{ v: 30 }, { v: 35 }, { v: 40 }, { v: 38 }, { v: 50 }, { v: 55 }, { v: 60 }, { v: 65 }];
 const sparkData2 = [{ v: 70 }, { v: 72 }, { v: 75 }, { v: 73 }, { v: 68 }, { v: 65 }, { v: 63 }, { v: 60 }];
@@ -19,20 +20,64 @@ const GRADIENTS = [
 ];
 
 export default function DashboardPage() {
+  const { analyses } = useAnalysis();
   const [followUps, setFollowUps] = useState(FOLLOW_UPS);
+
+  // Build dynamic follow-ups from analyses
+  const dynamicFollowUps = analyses.flatMap((a) =>
+    a.followUpActions.map((f, i) => ({
+      id: `${a.id}_f${i}`,
+      text: f.text,
+      sessionDate: a.date,
+      done: false,
+    }))
+  );
+
+  const allFollowUps = [...dynamicFollowUps, ...followUps];
 
   const toggleFollowUp = (id: string) => {
     setFollowUps((prev) => prev.map((f) => (f.id === id ? { ...f, done: !f.done } : f)));
   };
 
+  // Build combined sessions list with analyses on top
+  const analysisSessions = analyses.map((a) => ({
+    id: a.id,
+    topic: a.topic,
+    groupName: a.groupName,
+    groupId: a.groupId,
+    date: a.date,
+    studentCount: a.studentCount,
+    duration: a.duration,
+    status: "summary-ready" as const,
+  }));
+
+  const allSessions = [...analysisSessions, ...SESSIONS];
+  const sessionsThisMonth = 14 + analyses.length;
+  const signalCount = 2 + analyses.filter((a) => a.studentResults.some((s) => s.flagged)).length;
+  const pendingFollowUps = allFollowUps.filter((f) => !f.done).length;
+
+  // Dynamic signals from analyses
+  const dynamicSignals = analyses.flatMap((a) =>
+    a.studentResults.filter((s) => s.flagged).map((s) => ({
+      student: s.student,
+      flag: s.flagNote || "",
+      date: a.date,
+    }))
+  );
+
+  const allSignals = [
+    ...dynamicSignals,
+    { student: STUDENTS[0], flag: "Decreased verbal participation — 3 consecutive sessions", date: "Oct 14" },
+    { student: STUDENTS[3], flag: "Frequent topic changes when peers discuss conflict themes", date: "Oct 13" },
+  ];
+
   return (
     <AppShell pageTitle="Dashboard">
-      {/* Welcome bar */}
       <div className="rounded-3xl p-8 mb-8 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #EDE9FF 0%, #FCE7F3 50%, #E0F2FE 100%)" }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[28px] font-extrabold" style={{ color: "#2D1B69" }}>Good morning, Ms. Rivera 🌟</h2>
-            <p className="mt-1" style={{ color: "#7C6FAA" }}>2 new session summaries · 4 pending follow-ups</p>
+            <p className="mt-1" style={{ color: "#7C6FAA" }}>{analyses.length > 0 ? `${analyses.length} new` : "2 new"} session summaries · {pendingFollowUps} pending follow-ups</p>
           </div>
           <div className="text-6xl voice-mascot-bob hidden md:block">💜</div>
         </div>
@@ -40,22 +85,19 @@ export default function DashboardPage() {
         <div className="absolute bottom-4 left-32 text-lg opacity-20">✨</div>
       </div>
 
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard title="Sessions This Month" value={14} subtitle="3 scheduled this week" gradientBar={GRADIENTS[0]} icon={<CalendarDays className="h-5 w-5" />} />
+        <StatCard title="Sessions This Month" value={sessionsThisMonth} subtitle="3 scheduled this week" gradientBar={GRADIENTS[0]} icon={<CalendarDays className="h-5 w-5" />} />
         <StatCard title="Active Groups" value={6} subtitle="28 students total" gradientBar={GRADIENTS[1]} icon={<Users className="h-5 w-5" />} />
-        <StatCard title="Pending Follow-Ups" value={4} subtitle="Review suggested actions" gradientBar={GRADIENTS[2]} icon={<ClipboardList className="h-5 w-5" />} badge={<span className="lila-badge-amber">4</span>} />
-        <StatCard title="New Signals" value={2} subtitle="Observational signals, not alerts" gradientBar={GRADIENTS[3]} icon={<Info className="h-5 w-5" />} badge={<span className="lila-badge-purple">2</span>} />
+        <StatCard title="Pending Follow-Ups" value={pendingFollowUps} subtitle="Review suggested actions" gradientBar={GRADIENTS[2]} icon={<ClipboardList className="h-5 w-5" />} badge={<span className="lila-badge-amber">{pendingFollowUps}</span>} />
+        <StatCard title="New Signals" value={signalCount} subtitle="Observational signals, not alerts" gradientBar={GRADIENTS[3]} icon={<Info className="h-5 w-5" />} badge={<span className="lila-badge-purple">{signalCount}</span>} />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        {/* Left column */}
         <div className="space-y-8">
-          {/* Recent Sessions */}
           <div>
             <SectionHeader title="Recent Sessions" action={<Link to="/sessions" className="text-sm font-bold hover:underline" style={{ color: "#A78BFA" }}>View all</Link>} />
             <div className="space-y-3">
-              {SESSIONS.map((s) => (
+              {allSessions.map((s) => (
                 <div key={s.id} className="lila-card flex items-center justify-between gap-4 p-4">
                   <div className="min-w-0 flex-1">
                     <p className="font-bold truncate" style={{ color: "#2D1B69" }}>{s.topic}</p>
@@ -63,7 +105,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <StatusBadge status={s.status} />
-                    <Link to="/summary">
+                    <Link to={s.id.startsWith("analysis_") ? `/summary/${s.id}` : "/summary"}>
                       <button className="lila-btn-secondary text-xs !py-1.5 !px-4">
                         {s.status === "summary-ready" ? "View Summary" : s.status === "follow-up-pending" ? "Review" : "View"}
                       </button>
@@ -74,7 +116,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Active Groups */}
           <div>
             <SectionHeader
               title="Active Groups"
@@ -101,17 +142,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Right column */}
         <div className="space-y-6">
-          {/* Observational Signals */}
           <div>
             <SectionHeader title={<span className="flex items-center">Observational Signals <InfoTooltip text="These are participation and engagement patterns observed during sessions. They are not diagnostic assessments. Teacher review is required before any action." /></span>} />
             <div className="space-y-3">
-              {[
-                { student: STUDENTS[0], flag: "Decreased verbal participation — 3 consecutive sessions", date: "Oct 14" },
-                { student: STUDENTS[3], flag: "Frequent topic changes when peers discuss conflict themes", date: "Oct 13" },
-              ].map((item) => (
-                <div key={item.student.id} className="lila-card p-4" style={{ borderLeft: "4px solid #A78BFA" }}>
+              {allSignals.slice(0, 4).map((item, idx) => (
+                <div key={`${item.student.id}-${idx}`} className="lila-card p-4" style={{ borderLeft: "4px solid #A78BFA" }}>
                   <div className="flex items-start gap-3">
                     <StudentAvatar initials={item.student.initials} color={item.student.color} />
                     <div className="flex-1 min-w-0">
@@ -129,11 +165,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Follow-Ups */}
           <div>
-            <SectionHeader title={<span className="flex items-center">Follow-Ups <span className="lila-badge-amber ml-2">{followUps.filter((f) => !f.done).length}</span></span>} />
+            <SectionHeader title={<span className="flex items-center">Follow-Ups <span className="lila-badge-amber ml-2">{allFollowUps.filter((f) => !f.done).length}</span></span>} />
             <div className="space-y-2">
-              {followUps.map((f) => (
+              {allFollowUps.map((f) => (
                 <div key={f.id} className={`lila-card p-3 flex items-start gap-3 ${f.done ? "opacity-60" : ""}`} style={{ borderLeft: "4px solid #FDBA74" }}>
                   <button onClick={() => toggleFollowUp(f.id)} className="mt-0.5 shrink-0" aria-label={f.done ? "Mark undone" : "Mark done"}>
                     <CheckCircle2 className={`h-5 w-5 ${f.done ? "text-accent" : ""}`} style={f.done ? {} : { color: "#EDE9FF" }} />
@@ -148,7 +183,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Sparkline Trends */}
           <div>
             <SectionHeader title="Class Trends (Last 8 Sessions)" />
             {[
