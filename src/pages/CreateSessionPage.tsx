@@ -718,7 +718,7 @@ export default function CreateSessionPage() {
 
                 {uploaded && analysisState === "analyzing" && (
                   <div className="w-full max-w-md">
-                    <AnalysisProcessingScreen onComplete={() => {
+                    <AnalysisProcessingScreen ageRange={group?.ageRange || "6-8"} onComplete={() => {
                       const result = generateAnalysis({
                         groupId: selectedGroup || GROUPS[0].id,
                         sessionName: sessionName || "Live Session",
