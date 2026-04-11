@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { StudentAvatar } from "@/components/bridge/SharedComponents";
-import { Shield, Loader2, Mic, Square, Upload, CheckCircle2 } from "lucide-react";
+import { Shield, Loader2, Mic, Square, Upload, CheckCircle2, Copy, Download, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
