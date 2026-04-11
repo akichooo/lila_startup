@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      session_reports: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          id: string
+          report_json: Json | null
+          report_text: string
+          session_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          report_json?: Json | null
+          report_text?: string
+          session_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          report_json?: Json | null
+          report_text?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           created_at: string
