@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Voice Room", icon: Mic, path: "/voice-room", flagship: true },
-  { label: "Upload Audio", icon: Upload, path: "/sessions" },
+  { label: "Upload Audio", icon: Upload, path: "/upload-audio" },
   { label: "Create Session", icon: PlusCircle, path: "/sessions/create" },
   { label: "Student Trends", icon: TrendingUp, path: "/trends" },
   { label: "Privacy & Governance", icon: Shield, path: "/privacy" },
