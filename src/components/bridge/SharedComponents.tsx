@@ -16,7 +16,7 @@ const sizes = {
 export function StudentAvatar({ initials, color, size = "md", className = "" }: AvatarProps) {
   return (
     <div
-      className={`bridge-avatar ${sizes[size]} ${className}`}
+      className={`lila-avatar ${sizes[size]} ${className}`}
       style={{ backgroundColor: color, color: "#fff" }}
       aria-label={`Avatar for ${initials}`}
     >
@@ -27,11 +27,11 @@ export function StudentAvatar({ initials, color, size = "md", className = "" }: 
 
 export function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    "summary-ready": "bridge-badge-green",
-    "follow-up-pending": "bridge-badge-amber",
-    reviewed: "bridge-badge-gray",
-    live: "bridge-badge-blue",
-    draft: "bridge-badge-gray",
+    "summary-ready": "lila-badge-green",
+    "follow-up-pending": "lila-badge-amber",
+    reviewed: "lila-badge-gray",
+    live: "lila-badge-blue",
+    draft: "lila-badge-gray",
   };
   const labels: Record<string, string> = {
     "summary-ready": "Summary Ready",
@@ -40,35 +40,38 @@ export function StatusBadge({ status }: { status: string }) {
     live: "LIVE",
     draft: "Draft",
   };
-  return <span className={styles[status] || "bridge-badge-gray"}>{labels[status] || status}</span>;
+  return <span className={styles[status] || "lila-badge-gray"}>{labels[status] || status}</span>;
 }
 
 export function StatCard({
   title,
   value,
   subtitle,
-  borderColor,
+  gradientBar,
   icon,
   badge,
 }: {
   title: string;
   value: string | number;
   subtitle: string;
-  borderColor: string;
+  gradientBar: string;
   icon: ReactNode;
   badge?: ReactNode;
 }) {
   return (
-    <div className="bridge-stat-card" style={{ borderLeftColor: borderColor }}>
-      <div className="flex items-start justify-between">
+    <div className="lila-stat-card">
+      <div className="absolute top-0 left-0 right-0 h-2 rounded-t-3xl" style={{ background: gradientBar }} />
+      <div className="flex items-start justify-between pt-2">
         <div>
-          <p className="bridge-label mb-1">{title}</p>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
+          <p className="lila-label mb-1">{title}</p>
+          <p className="text-3xl font-extrabold text-foreground">{value}</p>
           <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           {badge}
-          <span className="text-muted-foreground">{icon}</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            {icon}
+          </div>
         </div>
       </div>
     </div>
@@ -77,7 +80,7 @@ export function StatCard({
 
 export function SectionHeader({ title, action }: { title: ReactNode; action?: ReactNode }) {
   return (
-    <div className="bridge-section-header">
+    <div className="lila-section-header">
       <h3>{title}</h3>
       {action}
     </div>
@@ -87,7 +90,8 @@ export function SectionHeader({ title, action }: { title: ReactNode; action?: Re
 export function InfoTooltip({ text }: { text: string }) {
   return (
     <span
-      className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-muted-foreground text-[10px] font-bold cursor-help ml-1.5"
+      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold cursor-help ml-1.5"
+      style={{ backgroundColor: "#EDE9FF", color: "#7C3AED" }}
       title={text}
       aria-label={text}
     >
@@ -96,10 +100,12 @@ export function InfoTooltip({ text }: { text: string }) {
   );
 }
 
-export function DisclaimerBanner({ children, variant = "blue" }: { children: ReactNode; variant?: "blue" | "amber" }) {
-  const bg = variant === "amber" ? "bg-warning/5 border-warning/30" : "bg-primary/5 border-primary/20";
+export function DisclaimerBanner({ children, variant = "purple" }: { children: ReactNode; variant?: "purple" | "amber" }) {
+  const styles = variant === "amber"
+    ? "border-[#FDBA74] bg-[#FFF7ED]"
+    : "border-[#C4B5FD] bg-[#EDE9FF]";
   return (
-    <div className={`rounded-2xl border p-4 text-sm text-muted-foreground ${bg}`}>
+    <div className={`rounded-3xl border-[1.5px] p-4 text-sm text-muted-foreground ${styles}`}>
       {children}
     </div>
   );

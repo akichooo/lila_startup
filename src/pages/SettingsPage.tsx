@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AppShell } from "@/components/bridge/AppShell";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,9 +31,15 @@ export default function SettingsPage() {
             <button
               key={c.id}
               onClick={() => setActiveCategory(c.id)}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                activeCategory === c.id ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted"
-              }`}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-all font-bold"
+              style={activeCategory === c.id ? {
+                background: "#EDE9FF",
+                borderLeft: "3px solid #A78BFA",
+                color: "#7C3AED",
+              } : {
+                borderLeft: "3px solid transparent",
+                color: "#7C6FAA",
+              }}
             >
               <c.icon className="h-4 w-4" />
               {c.label}
@@ -43,45 +48,45 @@ export default function SettingsPage() {
         </div>
 
         {/* Content */}
-        <div className="bridge-card">
+        <div className="lila-card">
           {activeCategory === "profile" && (
             <div className="space-y-5">
-              <h3>Profile</h3>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Profile</h3>
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">MR</div>
-                <Button variant="outline" size="sm">Change Photo</Button>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-extrabold text-white" style={{ background: "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)" }}>MR</div>
+                <button className="lila-btn-secondary text-xs !py-1.5 !px-4">Change Photo</button>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div><Label>Name</Label><Input defaultValue="Maria Rivera" /></div>
-                <div><Label>Email</Label><Input defaultValue="m.rivera@maplewood.edu" /></div>
-                <div><Label>School</Label><Input defaultValue="Maplewood Elementary" disabled /></div>
-                <div><Label>Role</Label><Input defaultValue="Teacher" disabled /></div>
+                <div><Label>Name</Label><Input defaultValue="Maria Rivera" className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }} /></div>
+                <div><Label>Email</Label><Input defaultValue="m.rivera@maplewood.edu" className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }} /></div>
+                <div><Label>School</Label><Input defaultValue="Maplewood Elementary" disabled className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }} /></div>
+                <div><Label>Role</Label><Input defaultValue="Teacher" disabled className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }} /></div>
               </div>
-              <Button onClick={handleSave}>Save Profile</Button>
+              <button className="lila-btn-primary" onClick={handleSave}>Save Profile</button>
             </div>
           )}
 
           {activeCategory === "defaults" && (
             <div className="space-y-5">
-              <h3>Session Defaults</h3>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Session Defaults</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Default Duration</Label>
-                  <Select defaultValue="20"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["15", "20", "25", "30"].map((d) => <SelectItem key={d} value={d}>{d} minutes</SelectItem>)}</SelectContent></Select>
+                  <Select defaultValue="20"><SelectTrigger className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }}><SelectValue /></SelectTrigger><SelectContent>{["15", "20", "25", "30"].map((d) => <SelectItem key={d} value={d}>{d} minutes</SelectItem>)}</SelectContent></Select>
                 </div>
                 <div>
                   <Label>Default Grade</Label>
-                  <Select defaultValue="3"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["K-1", "2-3", "3", "4-5", "6"].map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent></Select>
+                  <Select defaultValue="3"><SelectTrigger className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }}><SelectValue /></SelectTrigger><SelectContent>{["K-1", "2-3", "3", "4-5", "6"].map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent></Select>
                 </div>
                 <div>
                   <Label>Opening Question Style</Label>
-                  <Select defaultValue="open"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Open-ended / Socratic</SelectItem><SelectItem value="guided">Guided</SelectItem><SelectItem value="direct">Direct</SelectItem></SelectContent></Select>
+                  <Select defaultValue="open"><SelectTrigger className="rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Open-ended / Socratic</SelectItem><SelectItem value="guided">Guided</SelectItem><SelectItem value="direct">Direct</SelectItem></SelectContent></Select>
                 </div>
               </div>
               <div className="space-y-3 pt-2">
                 {[
-                  { label: "AI participation balancing", defaultChecked: true },
-                  { label: "AI misinformation correction", defaultChecked: true },
+                  { label: "Lila participation balancing", defaultChecked: true },
+                  { label: "Lila misinformation correction", defaultChecked: true },
                   { label: "Topic engagement tracking", defaultChecked: true },
                 ].map((t) => (
                   <div key={t.label} className="flex items-center justify-between">
@@ -90,19 +95,19 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-              <Button onClick={handleSave}>Save Defaults</Button>
+              <button className="lila-btn-primary" onClick={handleSave}>Save Defaults</button>
             </div>
           )}
 
           {activeCategory === "notifications" && (
             <div className="space-y-5">
-              <h3>Notifications</h3>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Notifications</h3>
               <div>
                 <Label className="mb-2 block">Email Digest</Label>
                 <div className="flex gap-4">
                   {["Off", "Daily", "Weekly"].map((o) => (
-                    <label key={o} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="radio" name="digest" defaultChecked={o === "Weekly"} className="accent-primary" /> {o}
+                    <label key={o} className="flex items-center gap-2 text-sm cursor-pointer font-bold" style={{ color: "#2D1B69" }}>
+                      <input type="radio" name="digest" defaultChecked={o === "Weekly"} style={{ accentColor: "#A78BFA" }} /> {o}
                     </label>
                   ))}
                 </div>
@@ -120,47 +125,47 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-              <Button onClick={handleSave}>Save Notifications</Button>
+              <button className="lila-btn-primary" onClick={handleSave}>Save Notifications</button>
             </div>
           )}
 
           {activeCategory === "groups" && (
             <div className="space-y-4">
-              <h3>Groups & Students</h3>
-              <p className="text-sm text-muted-foreground">Manage your student groups from the Dashboard or Sessions pages.</p>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Groups & Students</h3>
+              <p className="text-sm" style={{ color: "#7C6FAA" }}>Manage your student groups from the Dashboard or Sessions pages.</p>
             </div>
           )}
 
           {activeCategory === "privacy" && (
             <div className="space-y-4">
-              <h3>Privacy & Data Controls</h3>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Privacy & Data Controls</h3>
               <div className="space-y-3">
-                <Button variant="outline">Download My Data</Button>
-                <Button variant="outline" className="text-destructive">Delete Session Data for a Student</Button>
+                <button className="lila-btn-secondary">Download My Data</button>
+                <button className="lila-btn-secondary" style={{ borderColor: "#FB7185", color: "#FB7185" }}>Delete Session Data for a Student</button>
               </div>
               <div className="flex items-center justify-between pt-2">
                 <Label className="font-normal">Opt out of anonymized research</Label>
                 <Switch />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Contact our Data Protection Officer: <a href="mailto:dpo@bridge.edu" className="text-primary hover:underline">dpo@bridge.edu</a></p>
+              <p className="text-xs mt-2" style={{ color: "#A89DC4" }}>Contact our Data Protection Officer: <a href="mailto:dpo@lila.edu" className="font-bold hover:underline" style={{ color: "#A78BFA" }}>dpo@lila.edu</a></p>
             </div>
           )}
 
           {activeCategory === "access" && (
             <div className="space-y-4">
-              <h3>Access & Sharing</h3>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Access & Sharing</h3>
               <div>
                 <Label>Add Co-Teacher Access</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input placeholder="co-teacher@school.edu" className="flex-1" />
-                  <Button variant="outline">Invite</Button>
+                  <Input placeholder="co-teacher@school.edu" className="flex-1 rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }} />
+                  <button className="lila-btn-secondary text-xs !py-2 !px-4">Invite</button>
                 </div>
               </div>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-sm font-medium mb-2">Current Access</p>
+              <div className="rounded-2xl p-4" style={{ background: "#F5F3FF", border: "1.5px solid #EDE9FF" }}>
+                <p className="text-sm font-bold mb-2" style={{ color: "#2D1B69" }}>Current Access</p>
                 <div className="flex items-center justify-between text-sm">
-                  <span>Ms. Park (co-teacher)</span>
-                  <Button variant="ghost" size="sm" className="text-destructive text-xs">Revoke</Button>
+                  <span style={{ color: "#2D1B69" }}>Ms. Park (co-teacher)</span>
+                  <button className="text-xs font-bold" style={{ color: "#FB7185" }}>Revoke</button>
                 </div>
               </div>
             </div>
@@ -168,13 +173,13 @@ export default function SettingsPage() {
 
           {activeCategory === "security" && (
             <div className="space-y-4">
-              <h3>Account Security</h3>
-              <Button variant="outline">Change Password</Button>
-              <Button variant="outline">Enable Two-Factor Authentication</Button>
-              <div className="rounded-xl border border-border p-4">
-                <p className="text-sm font-medium mb-2">Active Sessions</p>
-                <div className="text-sm text-muted-foreground mb-2">Chrome on macOS — Current session</div>
-                <Button variant="ghost" size="sm" className="text-destructive text-xs">Sign Out All Devices</Button>
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Account Security</h3>
+              <button className="lila-btn-secondary">Change Password</button>
+              <button className="lila-btn-secondary">Enable Two-Factor Authentication</button>
+              <div className="rounded-2xl p-4" style={{ background: "#F5F3FF", border: "1.5px solid #EDE9FF" }}>
+                <p className="text-sm font-bold mb-2" style={{ color: "#2D1B69" }}>Active Sessions</p>
+                <div className="text-sm mb-2" style={{ color: "#7C6FAA" }}>Chrome on macOS — Current session</div>
+                <button className="text-xs font-bold" style={{ color: "#FB7185" }}>Sign Out All Devices</button>
               </div>
             </div>
           )}
