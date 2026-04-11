@@ -30,6 +30,7 @@ const TOPICS = [
 
 export default function CreateSessionPage() {
   const navigate = useNavigate();
+  const { generateAnalysis } = useAnalysis();
   const [step, setStep] = useState(1);
   const [sessionName, setSessionName] = useState("");
   const [topic, setTopic] = useState("");
