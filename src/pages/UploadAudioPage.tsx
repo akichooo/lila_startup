@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/bridge/AppShell";
 import { GROUPS } from "@/data/mockData";
@@ -11,6 +11,7 @@ import Blobby from "@/components/mascots/Blobby";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisResultPreview from "@/components/analysis/AnalysisResultPreview";
 import { useAnalysis, type AnalysisResult } from "@/contexts/AnalysisContext";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const ACCEPTED_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/wav", "audio/ogg", "audio/webm"];
 const ACCEPTED_EXTENSIONS = ".mp3,.m4a,.wav,.ogg,.webm";
