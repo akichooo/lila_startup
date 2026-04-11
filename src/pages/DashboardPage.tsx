@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/components/bridge/AppShell";
 import { StatCard, SectionHeader, StatusBadge, StudentAvatar, InfoTooltip } from "@/components/bridge/SharedComponents";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, Users, ClipboardList, Info, Plus, CheckCircle2 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useAnalysis } from "@/contexts/AnalysisContext";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const sparkData1 = [{ v: 30 }, { v: 35 }, { v: 40 }, { v: 38 }, { v: 50 }, { v: 55 }, { v: 60 }, { v: 65 }];
 const sparkData2 = [{ v: 70 }, { v: 72 }, { v: 75 }, { v: 73 }, { v: 68 }, { v: 65 }, { v: 63 }, { v: 60 }];
