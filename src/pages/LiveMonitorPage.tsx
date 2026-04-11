@@ -142,9 +142,6 @@ export default function LiveMonitorPage() {
         sessionName: "Feelings & Fairness",
         topic: "Feelings & Fairness",
         duration: Math.round(elapsedSeconds / 60),
-        audioUrl: null,
-        notes: notes.map((n) => ({ text: n.text, time: n.timestamp })),
-        marks: marks.map((m) => ({ time: m.timestamp, label: m.label })),
       });
     });
 
@@ -182,7 +179,7 @@ export default function LiveMonitorPage() {
     return (
       <AppShell pageTitle="Live Discussion Monitor">
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-          <Blobby mood="speaking" size={160} />
+          <Blobby state="speaking" size={160} />
           <p className="text-xl font-extrabold" style={{ color: "#2D1B69" }}>Well done! 🎉</p>
           <p className="text-sm" style={{ color: "#7C6FAA" }}>Preparing your session summary…</p>
         </div>
