@@ -4,13 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { User, CalendarDays, Bell, Users, Shield, Share2, Lock } from "lucide-react";
+import { User, CalendarDays, Bell, Users, Shield, Share2, Lock, Volume2 } from "lucide-react";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const categories = [
   { id: "profile", label: "Profile", icon: User },
   { id: "defaults", label: "Session Defaults", icon: CalendarDays },
   { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "sound", label: "Sound & Music", icon: Volume2 },
   { id: "groups", label: "Groups & Students", icon: Users },
   { id: "privacy", label: "Privacy & Data", icon: Shield },
   { id: "access", label: "Access & Sharing", icon: Share2 },
