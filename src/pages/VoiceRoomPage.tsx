@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AppShell } from "@/components/bridge/AppShell";
 import { Input } from "@/components/ui/input";
+import { useLilaSound } from "@/contexts/SoundContext";
 import {
   Mic,
   MicOff,
