@@ -152,7 +152,7 @@ export default function UploadAudioPage() {
 
           {/* Analyzing state */}
           {pageState === "analyzing" && (
-            <AnalysisProcessingScreen onComplete={handleAnalysisComplete} />
+            <AnalysisProcessingScreen onComplete={handleAnalysisComplete} ageRange={group?.ageRange || "6-8"} />
           )}
 
           {/* Analysis result */}

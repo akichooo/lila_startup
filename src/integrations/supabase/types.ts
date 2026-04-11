@@ -68,6 +68,60 @@ export type Database = {
         }
         Relationships: []
       }
+      student_session_records: {
+        Row: {
+          age_range: string | null
+          created_at: string
+          flag_description: string | null
+          flagged: boolean
+          group_id: string
+          group_name: string
+          id: string
+          participation_pct: number
+          session_date: string
+          session_id: string
+          session_topic: string
+          speaking_turns: number
+          student_id: string
+          student_name: string
+          tone_signal: string
+        }
+        Insert: {
+          age_range?: string | null
+          created_at?: string
+          flag_description?: string | null
+          flagged?: boolean
+          group_id: string
+          group_name: string
+          id?: string
+          participation_pct?: number
+          session_date?: string
+          session_id: string
+          session_topic?: string
+          speaking_turns?: number
+          student_id: string
+          student_name: string
+          tone_signal?: string
+        }
+        Update: {
+          age_range?: string | null
+          created_at?: string
+          flag_description?: string | null
+          flagged?: boolean
+          group_id?: string
+          group_name?: string
+          id?: string
+          participation_pct?: number
+          session_date?: string
+          session_id?: string
+          session_topic?: string
+          speaking_turns?: number
+          student_id?: string
+          student_name?: string
+          tone_signal?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

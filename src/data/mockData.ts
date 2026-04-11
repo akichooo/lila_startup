@@ -11,6 +11,7 @@ export interface Student {
 export interface Group {
   id: string;
   name: string;
+  ageRange: "6-8" | "9-10" | "11-12";
   students: Student[];
   lastSession: string;
   nextSession?: string;
@@ -60,12 +61,12 @@ export const STUDENTS: Student[] = [
 ];
 
 export const GROUPS: Group[] = [
-  { id: "g1", name: "Group Finch", students: STUDENTS.slice(0, 5), lastSession: "Oct 14", nextSession: "Oct 21" },
-  { id: "g2", name: "Group Sparrow", students: STUDENTS.slice(5, 10), lastSession: "Oct 13", nextSession: "Oct 20" },
-  { id: "g3", name: "Group Robin", students: STUDENTS.slice(0, 4), lastSession: "Oct 11", nextSession: "Oct 18" },
-  { id: "g4", name: "Group Crane", students: [STUDENTS[2], STUDENTS[5], STUDENTS[7], STUDENTS[8], STUDENTS[9]], lastSession: "Oct 4", nextSession: "Oct 18" },
-  { id: "g5", name: "Group Heron", students: STUDENTS.slice(1, 5), lastSession: "Oct 7" },
-  { id: "g6", name: "Group Wren", students: [STUDENTS[6], STUDENTS[8], STUDENTS[9]], lastSession: "Sep 30" },
+  { id: "g1", name: "Group Finch", ageRange: "6-8", students: STUDENTS.slice(0, 5), lastSession: "Oct 14", nextSession: "Oct 21" },
+  { id: "g2", name: "Group Sparrow", ageRange: "9-10", students: STUDENTS.slice(5, 10), lastSession: "Oct 13", nextSession: "Oct 20" },
+  { id: "g3", name: "Group Robin", ageRange: "6-8", students: STUDENTS.slice(0, 4), lastSession: "Oct 11", nextSession: "Oct 18" },
+  { id: "g4", name: "Group Crane", ageRange: "11-12", students: [STUDENTS[2], STUDENTS[5], STUDENTS[7], STUDENTS[8], STUDENTS[9]], lastSession: "Oct 4", nextSession: "Oct 18" },
+  { id: "g5", name: "Group Heron", ageRange: "9-10", students: STUDENTS.slice(1, 5), lastSession: "Oct 7" },
+  { id: "g6", name: "Group Wren", ageRange: "11-12", students: [STUDENTS[6], STUDENTS[8], STUDENTS[9]], lastSession: "Sep 30" },
 ];
 
 export const SESSIONS: Session[] = [

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import Blobby from "@/components/mascots/Blobby";
+import Tangerine from "@/components/mascots/Tangerine";
+import ZapZing from "@/components/mascots/ZapZing";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 const STAGES = [
@@ -13,9 +15,21 @@ const STAGES = [
 
 interface AnalysisProcessingScreenProps {
   onComplete: () => void;
+  ageRange?: "6-8" | "9-10" | "11-12";
 }
 
-export default function AnalysisProcessingScreen({ onComplete }: AnalysisProcessingScreenProps) {
+function MascotForAge({ ageRange, state }: { ageRange: string; state: "thinking" | "speaking" }) {
+  switch (ageRange) {
+    case "9-10":
+      return <Tangerine size={180} state={state} />;
+    case "11-12":
+      return <ZapZing size={180} state={state} />;
+    default:
+      return <Blobby size={180} state={state} />;
+  }
+}
+
+export default function AnalysisProcessingScreen({ onComplete, ageRange = "6-8" }: AnalysisProcessingScreenProps) {
   const [completedStages, setCompletedStages] = useState(0);
 
   useEffect(() => {
@@ -23,14 +37,14 @@ export default function AnalysisProcessingScreen({ onComplete }: AnalysisProcess
       const t = setTimeout(onComplete, 800);
       return () => clearTimeout(t);
     }
-    const delay = 1000 + Math.random() * 1000; // 1-2s per stage
+    const delay = 1000 + Math.random() * 1000;
     const t = setTimeout(() => setCompletedStages((p) => p + 1), delay);
     return () => clearTimeout(t);
   }, [completedStages, onComplete]);
 
   return (
     <div className="flex flex-col items-center gap-6 py-8">
-      <Blobby size={180} state="thinking" />
+      <MascotForAge ageRange={ageRange} state={completedStages >= STAGES.length ? "speaking" : "thinking"} />
 
       {/* Thought dots */}
       <div className="flex items-center gap-1">

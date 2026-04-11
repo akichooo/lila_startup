@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { GROUPS, type Student, type Group } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface StudentResult {
   student: Student;
@@ -27,6 +28,7 @@ export interface AnalysisResult {
   topic: string;
   groupId: string;
   groupName: string;
+  ageRange: string;
   date: string;
   duration: number;
   studentCount: number;
@@ -39,6 +41,23 @@ export interface AnalysisResult {
   createdAt: number;
 }
 
+export interface StudentSessionRecord {
+  id: string;
+  student_id: string;
+  student_name: string;
+  group_id: string;
+  group_name: string;
+  session_id: string;
+  session_date: string;
+  session_topic: string;
+  speaking_turns: number;
+  participation_pct: number;
+  tone_signal: string;
+  flagged: boolean;
+  flag_description: string | null;
+  age_range: string | null;
+}
+
 interface AnalysisContextType {
   analyses: AnalysisResult[];
   addAnalysis: (a: AnalysisResult) => void;
@@ -49,6 +68,8 @@ interface AnalysisContextType {
     duration?: number;
     audioUrl?: string;
   }) => AnalysisResult;
+  studentRecords: StudentSessionRecord[];
+  refreshRecords: () => Promise<void>;
 }
 
 const AnalysisContext = createContext<AnalysisContextType | null>(null);
@@ -80,14 +101,11 @@ function pickRandom<T>(arr: T[]): T {
 }
 
 function generateParticipation(count: number): number[] {
-  // Generate slightly uneven distribution summing to 100
   const raw = Array.from({ length: count }, () => 10 + Math.random() * 30);
   const sum = raw.reduce((a, b) => a + b, 0);
   const normalized = raw.map((v) => Math.round((v / sum) * 100));
-  // Fix rounding to sum to exactly 100
   const diff = 100 - normalized.reduce((a, b) => a + b, 0);
   normalized[0] += diff;
-  // Sort descending for natural feel
   return normalized.sort((a, b) => b - a);
 }
 
@@ -98,20 +116,73 @@ function engagementFromPct(pct: number): "High" | "Engaged" | "Moderate" | "Low"
   return "Low";
 }
 
-const engStyles: Record<string, string> = {
-  High: "lila-badge-green",
-  Engaged: "lila-badge-green",
-  Moderate: "lila-badge-amber",
-  Low: "lila-badge-amber",
-};
+function toneFromPct(pct: number): "positive" | "neutral" | "uncertain" {
+  if (pct >= 25) return "positive";
+  if (pct >= 18) return "neutral";
+  return "uncertain";
+}
 
 function formatNow(): string {
   const d = new Date();
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+async function persistStudentRecords(analysis: AnalysisResult) {
+  const group = GROUPS.find((g) => g.id === analysis.groupId);
+  const records = analysis.studentResults.map((sr) => ({
+    student_id: sr.student.id,
+    student_name: sr.student.name,
+    group_id: analysis.groupId,
+    group_name: analysis.groupName,
+    session_id: analysis.id,
+    session_date: new Date().toISOString(),
+    session_topic: analysis.topic,
+    speaking_turns: sr.speakingTurns,
+    participation_pct: sr.participationPct,
+    tone_signal: toneFromPct(sr.participationPct),
+    flagged: sr.flagged,
+    flag_description: sr.flagNote || null,
+    age_range: group?.ageRange || null,
+  }));
+
+  const { error } = await supabase.from("student_session_records").insert(records);
+  if (error) {
+    console.error("Failed to persist student records:", error);
+    // Fallback to localStorage
+    const existing = JSON.parse(localStorage.getItem("student_session_records") || "[]");
+    localStorage.setItem("student_session_records", JSON.stringify([...existing, ...records]));
+  }
+}
+
 export function AnalysisProvider({ children }: { children: ReactNode }) {
-  const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisResult[]>(() => {
+    const saved = localStorage.getItem("lila_analyses");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [studentRecords, setStudentRecords] = useState<StudentSessionRecord[]>([]);
+
+  // Persist analyses to localStorage
+  useEffect(() => {
+    localStorage.setItem("lila_analyses", JSON.stringify(analyses));
+  }, [analyses]);
+
+  const refreshRecords = async () => {
+    const { data, error } = await supabase
+      .from("student_session_records")
+      .select("*")
+      .order("session_date", { ascending: true });
+    if (error) {
+      console.error("Failed to fetch records:", error);
+      const fallback = JSON.parse(localStorage.getItem("student_session_records") || "[]");
+      setStudentRecords(fallback);
+    } else {
+      setStudentRecords(data as StudentSessionRecord[]);
+    }
+  };
+
+  useEffect(() => {
+    refreshRecords();
+  }, []);
 
   const addAnalysis = (a: AnalysisResult) => {
     setAnalyses((prev) => [a, ...prev]);
@@ -136,7 +207,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     const effectiveName = sessionName || effectiveTopic;
 
     const pcts = generateParticipation(students.length);
-    const flaggedIdx = pcts.length - 1; // lowest participation
+    const flaggedIdx = pcts.length - 1;
     const tone = pickRandom(TONES);
     const misconception = pickRandom(MISCONCEPTIONS.default);
     const misinfStudent = students[Math.floor(Math.random() * students.length)];
@@ -192,36 +263,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     };
 
     const highlights = [
-      {
-        text: `${firstName(topContributor.student)} offered a strong conceptual distinction using a concrete personal example.`,
-        time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-        isWarning: false,
-      },
-      {
-        text: `${firstName(secondContributor.student)} connected the discussion to a personal experience unprompted.`,
-        time: `${15 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-        isWarning: false,
-      },
-      {
-        text: `${firstName(quietStudent.student)} did not respond to two direct facilitator invitations. The facilitator moved on without pressure.`,
-        time: `${18 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-        isWarning: true,
-      },
+      { text: `${firstName(topContributor.student)} offered a strong conceptual distinction using a concrete personal example.`, time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: false },
+      { text: `${firstName(secondContributor.student)} connected the discussion to a personal experience unprompted.`, time: `${15 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: false },
+      { text: `${firstName(quietStudent.student)} did not respond to two direct facilitator invitations. The facilitator moved on without pressure.`, time: `${18 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: true },
     ];
 
     const followUpActions = [
-      {
-        text: `Check in briefly with ${firstName(quietStudent.student)} to see how they're doing this week.`,
-        urgency: "Low urgency",
-      },
-      {
-        text: `Consider pairing ${firstName(topContributor.student)} and ${firstName(quietStudent.student)} together in a warm-up activity next session.`,
-        urgency: "Pedagogical suggestion",
-      },
-      {
-        text: `Extend the ${effectiveTopic.toLowerCase()} topic next session — the group showed strong curiosity and unresolved questions.`,
-        urgency: "Curriculum suggestion",
-      },
+      { text: `Check in briefly with ${firstName(quietStudent.student)} to see how they're doing this week.`, urgency: "Low urgency" },
+      { text: `Consider pairing ${firstName(topContributor.student)} and ${firstName(quietStudent.student)} together in a warm-up activity next session.`, urgency: "Pedagogical suggestion" },
+      { text: `Extend the ${effectiveTopic.toLowerCase()} topic next session — the group showed strong curiosity and unresolved questions.`, urgency: "Curriculum suggestion" },
     ];
 
     const id = `analysis_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -232,6 +282,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       topic: effectiveTopic,
       groupId,
       groupName: group.name,
+      ageRange: group.ageRange,
       date: formatNow(),
       duration: effectiveDuration,
       studentCount: students.length,
@@ -245,11 +296,15 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     };
 
     addAnalysis(result);
+
+    // Persist student records to Supabase
+    persistStudentRecords(result).then(() => refreshRecords());
+
     return result;
   };
 
   return (
-    <AnalysisContext.Provider value={{ analyses, addAnalysis, generateAnalysis }}>
+    <AnalysisContext.Provider value={{ analyses, addAnalysis, generateAnalysis, studentRecords, refreshRecords }}>
       {children}
     </AnalysisContext.Provider>
   );
