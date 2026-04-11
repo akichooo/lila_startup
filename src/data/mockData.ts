@@ -1,4 +1,4 @@
-// Mock data for the Bridge platform
+// Mock data for the Lila platform
 
 export interface Student {
   id: string;
@@ -47,16 +47,16 @@ export interface TranscriptEntry {
 }
 
 export const STUDENTS: Student[] = [
-  { id: "s1", name: "Lena M.", initials: "LM", grade: "3rd", color: "hsl(174, 60%, 45%)" },
-  { id: "s2", name: "Marcus J.", initials: "MJ", grade: "3rd", color: "hsl(25, 80%, 55%)" },
-  { id: "s3", name: "Priya S.", initials: "PS", grade: "3rd", color: "hsl(270, 60%, 55%)" },
-  { id: "s4", name: "Omar S.", initials: "OS", grade: "3rd", color: "hsl(210, 70%, 55%)" },
-  { id: "s5", name: "Aiden K.", initials: "AK", grade: "3rd", color: "hsl(340, 60%, 55%)" },
-  { id: "s6", name: "Sofia T.", initials: "ST", grade: "3rd", color: "hsl(150, 60%, 45%)" },
-  { id: "s7", name: "Dev P.", initials: "DP", grade: "3rd", color: "hsl(45, 70%, 50%)" },
-  { id: "s8", name: "Zoe R.", initials: "ZR", grade: "3rd", color: "hsl(300, 50%, 55%)" },
-  { id: "s9", name: "Kai N.", initials: "KN", grade: "3rd", color: "hsl(190, 70%, 45%)" },
-  { id: "s10", name: "Amara L.", initials: "AL", grade: "3rd", color: "hsl(0, 60%, 55%)" },
+  { id: "s1", name: "Lena M.", initials: "LM", grade: "3rd", color: "#A78BFA" },
+  { id: "s2", name: "Marcus J.", initials: "MJ", grade: "3rd", color: "#FB7185" },
+  { id: "s3", name: "Priya S.", initials: "PS", grade: "3rd", color: "#7DD3FC" },
+  { id: "s4", name: "Omar S.", initials: "OS", grade: "3rd", color: "#6EE7B7" },
+  { id: "s5", name: "Aiden K.", initials: "AK", grade: "3rd", color: "#FCD34D" },
+  { id: "s6", name: "Sofia T.", initials: "ST", grade: "3rd", color: "#FDBA74" },
+  { id: "s7", name: "Dev P.", initials: "DP", grade: "3rd", color: "#C4B5FD" },
+  { id: "s8", name: "Zoe R.", initials: "ZR", grade: "3rd", color: "#FB7185" },
+  { id: "s9", name: "Kai N.", initials: "KN", grade: "3rd", color: "#7DD3FC" },
+  { id: "s10", name: "Amara L.", initials: "AL", grade: "3rd", color: "#6EE7B7" },
 ];
 
 export const GROUPS: Group[] = [
@@ -84,15 +84,15 @@ export const FOLLOW_UPS: FollowUp[] = [
 ];
 
 export const TRANSCRIPT: TranscriptEntry[] = [
-  { id: "t1", speaker: "Bridge Facilitator", initials: "AI", color: "hsl(245, 100%, 69%)", text: "Has anyone ever felt like something wasn't fair? What happened?", time: "10:02", isAI: true },
-  { id: "t2", speaker: "Lena", initials: "LM", color: "hsl(174, 60%, 45%)", text: "One time my brother got a bigger piece of cake and I didn't think that was fair.", time: "10:04" },
-  { id: "t3", speaker: "Bridge Facilitator", initials: "AI", color: "hsl(245, 100%, 69%)", text: "That sounds frustrating! Do you think fairness always means getting exactly the same thing?", time: "10:05", isAI: true },
-  { id: "t4", speaker: "Marcus", initials: "MJ", color: "hsl(25, 80%, 55%)", text: "No, sometimes fair means getting what you need. Like if someone is taller they need bigger shoes.", time: "10:07" },
-  { id: "t5", speaker: "Bridge Facilitator", initials: "AI", color: "hsl(245, 100%, 69%)", text: "That's a really thoughtful point, Marcus. Does everyone agree? What do others think?", time: "10:08", isAI: true },
-  { id: "t6", speaker: "Priya", initials: "PS", color: "hsl(270, 60%, 55%)", text: "I think fair means everyone is happy.", time: "10:09" },
-  { id: "t7", speaker: "Bridge Facilitator", initials: "AI", color: "hsl(245, 100%, 69%)", text: "That's an interesting idea, Priya! Sometimes fair decisions don't make everyone happy right away — like a rule that feels hard at first but is good for everyone. Can you think of an example like that?", time: "10:10", isAI: true, isCorrection: true },
-  { id: "t8", speaker: "", initials: "", color: "", text: "Facilitator waiting…", time: "", isSilence: true },
-  { id: "t9", speaker: "Omar", initials: "OS", color: "hsl(210, 70%, 55%)", text: "Like wearing helmets on bikes. I don't like it but it keeps me safe.", time: "10:13" },
+  { id: "t1", speaker: "Lila Facilitator", initials: "🟣", color: "#A78BFA", text: "Has anyone ever felt like something wasn't fair? What happened?", time: "10:02", isAI: true },
+  { id: "t2", speaker: "Lena", initials: "LM", color: "#A78BFA", text: "One time my brother got a bigger piece of cake and I didn't think that was fair.", time: "10:04" },
+  { id: "t3", speaker: "Lila Facilitator", initials: "🟣", color: "#A78BFA", text: "That sounds frustrating! Do you think fairness always means getting exactly the same thing?", time: "10:05", isAI: true },
+  { id: "t4", speaker: "Marcus", initials: "MJ", color: "#FB7185", text: "No, sometimes fair means getting what you need. Like if someone is taller they need bigger shoes.", time: "10:07" },
+  { id: "t5", speaker: "Lila Facilitator", initials: "🟣", color: "#A78BFA", text: "That's a really thoughtful point, Marcus. Does everyone agree? What do others think?", time: "10:08", isAI: true },
+  { id: "t6", speaker: "Priya", initials: "PS", color: "#7DD3FC", text: "I think fair means everyone is happy.", time: "10:09" },
+  { id: "t7", speaker: "Lila Facilitator", initials: "🟣", color: "#A78BFA", text: "That's an interesting idea, Priya! Sometimes fair decisions don't make everyone happy right away — like a rule that feels hard at first but is good for everyone. Can you think of an example like that?", time: "10:10", isAI: true, isCorrection: true },
+  { id: "t8", speaker: "", initials: "", color: "", text: "Lila is waiting…", time: "", isSilence: true },
+  { id: "t9", speaker: "Omar", initials: "OS", color: "#6EE7B7", text: "Like wearing helmets on bikes. I don't like it but it keeps me safe.", time: "10:13" },
 ];
 
 export const PARTICIPATION_DATA = [
