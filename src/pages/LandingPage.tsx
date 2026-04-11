@@ -152,7 +152,7 @@ export default function LandingPage() {
               <button className="bg-white font-bold rounded-full px-8 py-3.5 text-gradient-primary transition-all hover:scale-105">Preview Voice Experience →</button>
             </Link>
           </div>
-          <div className="absolute bottom-4 right-8 text-7xl opacity-60 hidden md:block voice-mascot-bob">🎧</div>
+          <div className="absolute bottom-4 right-8 opacity-60 hidden md:block"><Blobby size={70} state="idle" /></div>
         </div>
       </section>
 
