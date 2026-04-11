@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      sessions: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          engagement_tracking: boolean | null
+          grade: string | null
+          group_id: string | null
+          id: string
+          misinfo_correction: boolean | null
+          participation_balance: boolean | null
+          recording_path: string | null
+          session_name: string
+          status: string
+          topic: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          engagement_tracking?: boolean | null
+          grade?: string | null
+          group_id?: string | null
+          id?: string
+          misinfo_correction?: boolean | null
+          participation_balance?: boolean | null
+          recording_path?: string | null
+          session_name: string
+          status?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          engagement_tracking?: boolean | null
+          grade?: string | null
+          group_id?: string | null
+          id?: string
+          misinfo_correction?: boolean | null
+          participation_balance?: boolean | null
+          recording_path?: string | null
+          session_name?: string
+          status?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
