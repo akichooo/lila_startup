@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -13,8 +13,12 @@ import {
   HelpCircle,
   Menu,
   X,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -30,6 +34,35 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const { settings, updateSettings, play, initTone, toneStarted } = useLilaSound();
+
+  // Close volume slider on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (volumeRef.current && !volumeRef.current.contains(e.target as Node)) {
+        setShowVolumeSlider(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSoundToggle = async () => {
+    if (!toneStarted) await initTone();
+    const newEnabled = !settings.enabled;
+    updateSettings({ enabled: newEnabled });
+    if (newEnabled) {
+      setShowVolumeSlider(true);
+    } else {
+      setShowVolumeSlider(false);
+    }
+  };
+
+  const handleNavClick = () => {
+    play("nav-click");
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-background">
