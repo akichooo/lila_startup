@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { StudentAvatar } from "@/components/bridge/SharedComponents";
-import { Shield, Loader2, Mic, Square, Upload, CheckCircle2 } from "lucide-react";
+import { Shield, Loader2, Mic, Square, Upload, CheckCircle2, Copy, Download, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -45,6 +45,8 @@ export default function CreateSessionPage() {
   const [recordingDone, setRecordingDone] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const [publicUrl, setPublicUrl] = useState("");
+  const [uploadError, setUploadError] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -125,6 +127,7 @@ export default function CreateSessionPage() {
     }
 
     setUploading(true);
+    setUploadError(false);
     try {
       const anonymousId = `anon_${Date.now()}`;
       const fileName = `${anonymousId}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
@@ -135,7 +138,16 @@ export default function CreateSessionPage() {
 
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabase.from("sessions").insert({
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from("audio-recordings")
+        .getPublicUrl(fileName);
+
+      const filePublicUrl = urlData.publicUrl;
+      setPublicUrl(filePublicUrl);
+
+      // Save session record with the public URL
+      await supabase.from("sessions").insert({
         user_id: null,
         session_name: sessionName || "Untitled Session",
         topic,
@@ -146,16 +158,15 @@ export default function CreateSessionPage() {
         misinfo_correction: misinfoCorrection,
         participation_balance: participationBalance,
         engagement_tracking: engagementTracking,
-        recording_path: fileName,
+        recording_path: filePublicUrl,
         status: "completed",
       });
 
-      if (dbError) throw dbError;
-
       setUploaded(true);
       toast.success("Recording saved successfully!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save recording.");
+    } catch {
+      setUploadError(true);
+      toast.error("Recording could not be saved. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -620,14 +631,74 @@ export default function CreateSessionPage() {
                   </>
                 )}
 
-                {uploaded && (
+                {uploadError && !uploading && (
                   <div className="flex flex-col items-center gap-3">
-                    <p className="text-sm" style={{ color: "#7C6FAA" }}>
-                      Recording saved to Lila Cloud ☁️
+                    <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF4444" }}>
+                      <AlertCircle className="h-4 w-4" /> Recording could not be saved.
+                    </div>
+                    <button className="lila-btn-primary" onClick={handleUpload}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {uploaded && (
+                  <div className="flex flex-col items-center gap-4 w-full max-w-md">
+                    {/* Mascot waving */}
+                    <div className="voice-mascot-bob">
+                      <div
+                        className="h-16 w-16 rounded-full flex items-center justify-center text-3xl"
+                        style={{
+                          background: "linear-gradient(135deg, #6EE7B7 0%, #7DD3FC 100%)",
+                          boxShadow: "0 4px 20px rgba(110,231,183,0.25)",
+                        }}
+                      >
+                        👋
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: "#059669" }}>
+                      ✅ Recording saved to Lila Cloud!
                     </p>
-                    <div className="flex gap-3">
+
+                    {/* Public URL box */}
+                    {publicUrl && (
+                      <div className="w-full">
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: "#7C6FAA" }}>
+                          Public File URL
+                        </label>
+                        <div
+                          className="rounded-xl p-3 text-xs break-all font-mono"
+                          style={{ background: "#F5F3FF", border: "1.5px solid #EDE9FF", color: "#2D1B69" }}
+                        >
+                          {publicUrl}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            className="lila-btn-secondary flex items-center gap-1 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(publicUrl);
+                              toast.success("Link copied!");
+                            }}
+                          >
+                            <Copy className="h-3 w-3" /> Copy Link
+                          </button>
+                          <a
+                            href={publicUrl}
+                            download
+                            className="lila-btn-secondary flex items-center gap-1 text-xs"
+                          >
+                            <Download className="h-3 w-3" /> Download File
+                          </a>
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: "#A89DC4" }}>
+                          💡 This link can be used to send the recording to external tools like Make.com
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
                       <button className="lila-btn-secondary" onClick={() => navigate("/dashboard")}>
-                        Back to Dashboard
+                        Go to Dashboard
                       </button>
                       <button className="lila-btn-primary" onClick={() => navigate("/live")}>
                         View Live Monitor
