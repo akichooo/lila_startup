@@ -23,6 +23,13 @@ const GRADIENTS = [
 export default function DashboardPage() {
   const { analyses } = useAnalysis();
   const [followUps, setFollowUps] = useState(FOLLOW_UPS);
+  const { play, startBackgroundMusic, stopBackgroundMusic } = useLilaSound();
+
+  useEffect(() => {
+    startBackgroundMusic("dashboard");
+    play("mascot-wave");
+    return () => stopBackgroundMusic();
+  }, [startBackgroundMusic, stopBackgroundMusic, play]);
 
   // Build dynamic follow-ups from analyses
   const dynamicFollowUps = analyses.flatMap((a) =>
