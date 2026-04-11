@@ -115,7 +115,8 @@ export default function CreateSessionPage() {
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         toast.error("Please sign in to save recordings.");
         setUploading(false);
@@ -303,6 +304,47 @@ export default function CreateSessionPage() {
 
           {step === 4 && (
             <div className="space-y-6">
+              {/* Welcome creature animation */}
+              {!isRecording && !recordingDone && !uploaded && (
+                <div className="flex flex-col items-center gap-3 animate-fade-in">
+                  <div className="relative">
+                    {/* Speech bubble */}
+                    <div
+                      className="absolute -top-16 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-bold animate-bounce"
+                      style={{
+                        background: "#EDE9FF",
+                        color: "#7C3AED",
+                        border: "1.5px solid #C4B5FD",
+                        boxShadow: "0 4px 12px rgba(167,139,250,0.15)",
+                      }}
+                    >
+                      Hi friends! Ready to talk? 🎤
+                      <div
+                        className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-3 h-3 rotate-45"
+                        style={{ background: "#EDE9FF", borderRight: "1.5px solid #C4B5FD", borderBottom: "1.5px solid #C4B5FD" }}
+                      />
+                    </div>
+                    {/* Friendly creature (Lila mascot) */}
+                    <div className="voice-mascot-bob">
+                      <div
+                        className="h-20 w-20 rounded-full flex items-center justify-center text-4xl"
+                        style={{
+                          background: "linear-gradient(135deg, #C4B5FD 0%, #FBCFE8 100%)",
+                          boxShadow: "0 4px 20px rgba(167,139,250,0.25)",
+                        }}
+                      >
+                        <span className="inline-block animate-pulse" style={{ animationDuration: "1.5s" }}>
+                          🦉
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold" style={{ color: "#7C6FAA" }}>
+                    Lila is waving hello! Press record when you're ready.
+                  </p>
+                </div>
+              )}
+
               <h2 className="font-extrabold text-center" style={{ color: "#2D1B69" }}>
                 {uploaded ? "Session Complete! ✨" : recordingDone ? "Recording Complete" : isRecording ? "Recording in Progress" : "Ready to Record"}
               </h2>
