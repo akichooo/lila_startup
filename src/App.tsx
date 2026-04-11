@@ -15,6 +15,7 @@ import TrendsPage from "./pages/TrendsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import SettingsPage from "./pages/SettingsPage";
 import VoiceRoomPage from "./pages/VoiceRoomPage";
+import UploadAudioPage from "./pages/UploadAudioPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
