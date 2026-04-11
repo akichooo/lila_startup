@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, FileAudio, Copy, Download, Send, CheckCircle2, AlertCircle, X, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import Blobby from "@/components/mascots/Blobby";
 
 const ACCEPTED_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/wav", "audio/ogg", "audio/webm"];
 const ACCEPTED_EXTENSIONS = ".mp3,.m4a,.wav,.ogg,.webm";
@@ -16,6 +17,19 @@ function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Sanitize filename to ASCII-safe characters only */
+function sanitizeFileName(name: string): string {
+  const ext = name.split(".").pop() || "mp3";
+  const base = name.replace(/\.[^.]+$/, "");
+  // Replace any non-ASCII or special chars with underscores, collapse multiples
+  const safe = base
+    .replace(/[^\w.-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    || "audio";
+  return `${safe}.${ext}`;
 }
 
 type PageState = "pick" | "uploading" | "success" | "error";
@@ -34,6 +48,12 @@ export default function UploadAudioPage() {
   const [copied, setCopied] = useState(false);
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
+
+  const blobbyState = pageState === "uploading" ? "thinking"
+    : pageState === "success" ? "speaking"
+    : pageState === "error" ? "listening"
+    : file ? "listening"
+    : "idle";
 
   const validateFile = (f: File): string | null => {
     if (!ACCEPTED_TYPES.includes(f.type) && !f.name.match(/\.(mp3|m4a|wav|ogg|webm)$/i)) {
@@ -73,8 +93,9 @@ export default function UploadAudioPage() {
     setProgress(0);
 
     try {
-      const groupLabel = group?.name.replace(/\s+/g, "_") || "ungrouped";
-      const fileName = `${Date.now()}_${groupLabel}_${file.name.replace(/\s+/g, "_")}`;
+      const groupLabel = group?.name.replace(/[^\w]/g, "_") || "ungrouped";
+      const safeName = sanitizeFileName(file.name);
+      const fileName = `${Date.now()}_${groupLabel}_${safeName}`;
 
       const progressInterval = setInterval(() => {
         setProgress((p) => Math.min(p + 5, 90));
@@ -124,28 +145,51 @@ export default function UploadAudioPage() {
       <div className="mx-auto max-w-[600px]">
         <div className="lila-card-elevated">
 
+          {/* Blobby mascot - always visible */}
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <Blobby size={180} state={blobbyState} />
+            {pageState === "pick" && !file && (
+              <div
+                className="rounded-2xl px-4 py-2 text-sm font-semibold text-center"
+                style={{ background: "#F5F3FF", color: "#2D1B69", border: "1.5px solid #EDE9FF" }}
+              >
+                💬 Drop your audio file here and I'll take care of the rest!
+              </div>
+            )}
+            {pageState === "uploading" && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="inline-block w-2 h-2 rounded-full animate-bounce" style={{ background: "#A78BFA", animationDelay: "0ms" }} />
+                <span className="inline-block w-2 h-2 rounded-full animate-bounce" style={{ background: "#A78BFA", animationDelay: "150ms" }} />
+                <span className="inline-block w-2 h-2 rounded-full animate-bounce" style={{ background: "#A78BFA", animationDelay: "300ms" }} />
+              </div>
+            )}
+            {pageState === "success" && (
+              <style>{`
+                @keyframes sparkle { 0%,100%{opacity:0;transform:scale(0)} 50%{opacity:1;transform:scale(1)} }
+              `}</style>
+            )}
+            {pageState === "success" && (
+              <div className="relative -mt-6 w-full flex justify-center pointer-events-none">
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute text-lg"
+                    style={{
+                      animation: `sparkle 0.8s ease-out ${i * 0.15}s both`,
+                      left: `${30 + i * 10}%`,
+                      top: -10 - (i % 2) * 15,
+                    }}
+                  >
+                    ⭐
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* ===== PICK / READY STATE ===== */}
           {pageState === "pick" && (
             <div className="space-y-5">
-              {/* Mascot */}
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center text-4xl voice-mascot-bob"
-                  style={{
-                    background: "linear-gradient(135deg, #C4B5FD 0%, #FBCFE8 100%)",
-                    boxShadow: "0 4px 20px rgba(167,139,250,0.25)",
-                  }}
-                >
-                  🦉
-                </div>
-                <div
-                  className="rounded-2xl px-4 py-2 text-sm font-semibold text-center"
-                  style={{ background: "#F5F3FF", color: "#2D1B69", border: "1.5px solid #EDE9FF" }}
-                >
-                  💬 Drop your audio file here and I'll take care of the rest!
-                </div>
-              </div>
-
               {/* Group selector */}
               <div>
                 <Label>Associate with Group (optional)</Label>
@@ -246,20 +290,9 @@ export default function UploadAudioPage() {
           {/* ===== UPLOADING STATE ===== */}
           {pageState === "uploading" && (
             <div className="space-y-5">
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center text-4xl animate-pulse"
-                  style={{
-                    background: "linear-gradient(135deg, #C4B5FD 0%, #FBCFE8 100%)",
-                    boxShadow: "0 4px 20px rgba(167,139,250,0.25)",
-                  }}
-                >
-                  🤔
-                </div>
-                <p className="text-sm font-semibold" style={{ color: "#2D1B69" }}>
-                  Uploading your file…
-                </p>
-              </div>
+              <p className="text-sm font-semibold text-center" style={{ color: "#2D1B69" }}>
+                Uploading your file…
+              </p>
               <div className="space-y-2">
                 <div className="relative h-3 w-full overflow-hidden rounded-full" style={{ background: "#EDE9FF" }}>
                   <div
@@ -283,20 +316,9 @@ export default function UploadAudioPage() {
           {/* ===== SUCCESS STATE ===== */}
           {pageState === "success" && (
             <div className="space-y-5">
-              <div className="flex flex-col items-center gap-3">
-                <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center text-4xl voice-mascot-bob"
-                  style={{
-                    background: "linear-gradient(135deg, #6EE7B7 0%, #7DD3FC 100%)",
-                    boxShadow: "0 4px 20px rgba(110,231,183,0.25)",
-                  }}
-                >
-                  👋
-                </div>
-                <h2 className="font-extrabold text-center text-lg" style={{ color: "#2D1B69" }}>
-                  Upload Complete! ✨
-                </h2>
-              </div>
+              <h2 className="font-extrabold text-center text-lg" style={{ color: "#2D1B69" }}>
+                Upload Complete! ✨
+              </h2>
 
               <div className="rounded-2xl p-4 space-y-4" style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}>
                 <div className="flex items-center gap-2">
@@ -327,19 +349,11 @@ export default function UploadAudioPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    className="lila-btn-secondary flex items-center gap-1.5 text-xs"
-                    onClick={handleCopy}
-                  >
+                  <button className="lila-btn-secondary flex items-center gap-1.5 text-xs" onClick={handleCopy}>
                     {copied ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copied ? "Copied ✓" : "Copy Link"}
                   </button>
-                  <a
-                    href={publicUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="lila-btn-secondary flex items-center gap-1.5 text-xs"
-                  >
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="lila-btn-secondary flex items-center gap-1.5 text-xs">
                     <Download className="h-3.5 w-3.5" /> Download File
                   </a>
                   <button className="lila-btn-secondary flex items-center gap-1.5 text-xs" disabled>
@@ -353,12 +367,8 @@ export default function UploadAudioPage() {
               </div>
 
               <div className="flex gap-3">
-                <button className="lila-btn-secondary flex-1" onClick={resetPage}>
-                  Start Over
-                </button>
-                <button className="lila-btn-primary flex-1" onClick={() => navigate("/dashboard")}>
-                  Go to Dashboard
-                </button>
+                <button className="lila-btn-secondary flex-1" onClick={resetPage}>Start Over</button>
+                <button className="lila-btn-primary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
               </div>
             </div>
           )}
@@ -366,31 +376,15 @@ export default function UploadAudioPage() {
           {/* ===== ERROR STATE ===== */}
           {pageState === "error" && (
             <div className="space-y-5">
-              <div className="flex flex-col items-center gap-3">
-                <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center text-4xl"
-                  style={{
-                    background: "linear-gradient(135deg, #FECACA 0%, #FDE68A 100%)",
-                    boxShadow: "0 4px 20px rgba(254,202,202,0.25)",
-                  }}
-                >
-                  😟
-                </div>
-                <h2 className="font-extrabold text-center" style={{ color: "#2D1B69" }}>
-                  Upload Failed
-                </h2>
-                <p className="text-sm text-center" style={{ color: "#7C6FAA" }}>
-                  The file could not be saved. Please try again.
-                </p>
-              </div>
+              <h2 className="font-extrabold text-center" style={{ color: "#2D1B69" }}>
+                Upload Failed
+              </h2>
+              <p className="text-sm text-center" style={{ color: "#7C6FAA" }}>
+                The file could not be saved. Please try again.
+              </p>
               <div className="flex gap-3">
-                <button className="lila-btn-secondary flex-1" onClick={resetPage}>
-                  Start Over
-                </button>
-                <button
-                  className="lila-btn-primary flex-1 flex items-center justify-center gap-2"
-                  onClick={handleUpload}
-                >
+                <button className="lila-btn-secondary flex-1" onClick={resetPage}>Start Over</button>
+                <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={handleUpload}>
                   <RotateCcw className="h-4 w-4" /> Retry
                 </button>
               </div>
