@@ -112,13 +112,16 @@ export default function UploadAudioPage() {
       const { data: urlData } = supabase.storage.from("recordings").getPublicUrl(fileName);
       setPublicUrl(urlData.publicUrl);
       setPageState("success");
+      play("success");
       toast.success("File uploaded successfully!");
     } catch {
       setPageState("error");
+      play("error");
     }
   };
 
   const handleSendToAnalysis = () => {
+    play("primary-click");
     setPageState("analyzing");
   };
 
