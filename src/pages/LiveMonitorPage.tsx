@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { toast } from "sonner";
 import Blobby from "@/components/mascots/Blobby";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const participationData = [
   { name: "Lena", value: 18, color: "#A78BFA" },
