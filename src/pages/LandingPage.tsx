@@ -9,6 +9,9 @@ import {
   Star,
   ArrowRight,
   CheckCircle2,
+  Mic,
+  Volume2,
+  Users,
 } from "lucide-react";
 
 const features = [
@@ -132,6 +135,94 @@ export default function LandingPage() {
                 <f.icon className="h-5 w-5" />
               </div>
               <h3 className="mb-2">{f.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Talking Lila Featured Section */}
+      <section className="mx-auto max-w-7xl px-6 py-20">
+        <div className="text-center mb-10">
+          <span className="bridge-badge bg-secondary/10 text-secondary text-[10px] uppercase tracking-widest mb-3 inline-block">Flagship Innovation</span>
+          <h2 className="text-[40px] font-bold leading-tight">Introducing Talking Lila</h2>
+          <p className="mt-3 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Soon, Lila will hold live, spoken group discussions with your students — age-appropriate, educationally guided, and emotionally safe. The future of classroom facilitation is coming.
+          </p>
+          <div className="flex justify-center gap-2 mt-4">
+            <span className="bridge-badge-amber text-[10px] uppercase tracking-wide">In Development</span>
+            <span className="bridge-badge bg-secondary/10 text-secondary text-[10px] uppercase tracking-wide">Interactive Preview Available</span>
+          </div>
+        </div>
+
+        {/* Hero visual card */}
+        <div className="rounded-3xl p-10 md:p-16 relative overflow-hidden" style={{ background: "linear-gradient(135deg, hsl(248, 80%, 95%) 0%, hsl(248, 60%, 85%) 100%)" }}>
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            {/* Mascot side */}
+            <div className="flex flex-col items-center text-center">
+              <div className="relative">
+                <div className="voice-mascot-bob text-[180px] leading-none">🤖</div>
+                <div className="absolute -top-4 right-0 text-4xl">🎧</div>
+                {/* Pulse rings */}
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="absolute inset-0 rounded-full border-2 border-secondary/15 voice-ring-pulse pointer-events-none" style={{ inset: `${-20 - i * 20}px`, animationDelay: `${i * 0.8}s` }} />
+                ))}
+              </div>
+              <div className="mt-4 rounded-xl bg-card/80 backdrop-blur-sm px-4 py-2 text-sm italic text-muted-foreground shadow-sm">
+                "Ready to listen… 🎙"
+              </div>
+              <div className="mt-6 flex h-20 w-20 items-center justify-center rounded-full bg-card border-2 border-secondary/30 shadow-lg shadow-secondary/20">
+                <Mic className="h-8 w-8 text-secondary" />
+              </div>
+              <span className="text-xs text-muted-foreground mt-2">Preview Voice Experience</span>
+            </div>
+            {/* Sample conversation */}
+            <div className="hidden lg:block">
+              <span className="bridge-badge-amber text-[10px] uppercase tracking-wide mb-3 inline-block">Sample Preview — Not Live</span>
+              <div className="space-y-3">
+                {[
+                  { speaker: "lila", text: "Let's talk about fairness. Has anyone felt like something wasn't fair lately?" },
+                  { speaker: "student", text: "My brother got more screen time than me!" },
+                  { speaker: "lila", text: "That sounds frustrating! Do you think fairness always means getting exactly the same thing?" },
+                ].map((msg, i) => (
+                  <div key={i} className={`flex gap-3 ${msg.speaker === "student" ? "flex-row-reverse" : ""}`}>
+                    <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs ${
+                      msg.speaker === "lila" ? "bg-secondary text-secondary-foreground" : "bg-card text-foreground"
+                    }`}>
+                      {msg.speaker === "lila" ? "🟣" : "👦"}
+                    </div>
+                    <div className={`rounded-xl px-3 py-2 text-sm max-w-[280px] ${
+                      msg.speaker === "lila" ? "bg-secondary/15 text-foreground" : "bg-card text-foreground"
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex justify-center gap-4 mt-8">
+          <Link to="/voice-room">
+            <Button size="lg" className="bg-secondary hover:bg-secondary/90 text-secondary-foreground text-base px-8">Preview Voice Room</Button>
+          </Link>
+          <Button size="lg" variant="outline" className="border-secondary/30 text-secondary text-base px-8">Join Waitlist</Button>
+        </div>
+
+        {/* Promise cards */}
+        <div className="grid sm:grid-cols-3 gap-6 mt-12">
+          {[
+            { icon: Volume2, title: "Live Spoken Guidance", desc: "Lila will speak directly with student groups in real time, asking questions, listening, and responding in an age-appropriate voice." },
+            { icon: Users, title: "Age-Adaptive Voice Personas", desc: "Lila's voice tone, vocabulary, and pacing adapt automatically to the age group — playful for younger students, thoughtful for older ones." },
+            { icon: Shield, title: "Teacher in Control", desc: "Teachers set the topic, monitor the session live, pause at any moment, and receive the same observational summaries they trust today." },
+          ].map((f) => (
+            <div key={f.title} className="bridge-card hover:shadow-md transition-shadow group">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary group-hover:bg-secondary group-hover:text-secondary-foreground transition-colors">
+                <f.icon className="h-5 w-5" />
+              </div>
+              <h3 className="mb-2 font-semibold">{f.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
             </div>
           ))}

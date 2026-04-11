@@ -166,6 +166,56 @@
   .shimmer {
     @apply animate-pulse bg-muted rounded-lg;
   }
+
+  /* Voice Room animations */
+  .voice-room-mic-pulse {
+    animation: micPulse 2s ease-in-out infinite;
+  }
+
+  .voice-mascot-bob {
+    animation: mascotBob 2.4s ease-in-out infinite;
+  }
+
+  .voice-ring-pulse {
+    animation: ringPulse 3s ease-out infinite;
+  }
+
+  .voice-mic-glow {
+    box-shadow: 0 0 0 0 hsl(var(--secondary) / 0.4);
+    animation: micGlow 1.2s ease-in-out infinite;
+  }
+
+  .voice-ellipsis::after {
+    content: '';
+    animation: ellipsis 1.5s steps(3, end) infinite;
+  }
+}
+
+@keyframes micPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes ringPulse {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+
+@keyframes micGlow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0.4); }
+  50% { box-shadow: 0 0 0 12px hsl(var(--secondary) / 0); }
+}
+
+@keyframes ellipsis {
+  0% { content: ''; }
+  33% { content: '.'; }
+  66% { content: '..'; }
+  100% { content: '...'; }
 }
 
 @layer utilities {

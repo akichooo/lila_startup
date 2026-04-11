@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
+  Mic,
   MessageSquare,
   Users,
   TrendingUp,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { label: "Voice Room", icon: Mic, path: "/voice-room", flagship: true },
   { label: "Sessions", icon: MessageSquare, path: "/sessions" },
   { label: "Students", icon: Users, path: "/students" },
   { label: "Trends", icon: TrendingUp, path: "/trends" },
@@ -49,6 +51,38 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
         <nav className="flex-1 overflow-y-auto py-4" aria-label="Main navigation">
           {navItems.map((item) => {
             const active = location.pathname === item.path;
+            const isFlagship = (item as any).flagship;
+
+            if (isFlagship) {
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`group relative mx-2 mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
+                    active
+                      ? "bg-gradient-to-r from-secondary/20 to-destructive/10 text-secondary shadow-sm"
+                      : "bg-gradient-to-r from-secondary/10 to-destructive/5 text-secondary hover:from-secondary/20 hover:to-destructive/10"
+                  }`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <item.icon className="h-5 w-5 shrink-0 voice-room-mic-pulse" />
+                  {sidebarOpen ? (
+                    <>
+                      <span>{item.label}</span>
+                      <span className="ml-auto bridge-badge bg-warning/15 text-warning text-[10px] uppercase tracking-wide group-hover:hidden">
+                        Coming Soon
+                      </span>
+                      <span className="ml-auto hidden bridge-badge bg-secondary/15 text-secondary text-[10px] group-hover:inline-flex">
+                        Preview Now →
+                      </span>
+                    </>
+                  ) : (
+                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning" />
+                  )}
+                </Link>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
