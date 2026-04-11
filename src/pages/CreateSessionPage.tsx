@@ -631,14 +631,74 @@ export default function CreateSessionPage() {
                   </>
                 )}
 
-                {uploaded && (
+                {uploadError && !uploading && (
                   <div className="flex flex-col items-center gap-3">
-                    <p className="text-sm" style={{ color: "#7C6FAA" }}>
-                      Recording saved to Lila Cloud ☁️
+                    <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF4444" }}>
+                      <AlertCircle className="h-4 w-4" /> Recording could not be saved.
+                    </div>
+                    <button className="lila-btn-primary" onClick={handleUpload}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {uploaded && (
+                  <div className="flex flex-col items-center gap-4 w-full max-w-md">
+                    {/* Mascot waving */}
+                    <div className="voice-mascot-bob">
+                      <div
+                        className="h-16 w-16 rounded-full flex items-center justify-center text-3xl"
+                        style={{
+                          background: "linear-gradient(135deg, #6EE7B7 0%, #7DD3FC 100%)",
+                          boxShadow: "0 4px 20px rgba(110,231,183,0.25)",
+                        }}
+                      >
+                        👋
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: "#059669" }}>
+                      ✅ Recording saved to Lila Cloud!
                     </p>
-                    <div className="flex gap-3">
+
+                    {/* Public URL box */}
+                    {publicUrl && (
+                      <div className="w-full">
+                        <label className="text-xs font-semibold mb-1 block" style={{ color: "#7C6FAA" }}>
+                          Public File URL
+                        </label>
+                        <div
+                          className="rounded-xl p-3 text-xs break-all font-mono"
+                          style={{ background: "#F5F3FF", border: "1.5px solid #EDE9FF", color: "#2D1B69" }}
+                        >
+                          {publicUrl}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            className="lila-btn-secondary flex items-center gap-1 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(publicUrl);
+                              toast.success("Link copied!");
+                            }}
+                          >
+                            <Copy className="h-3 w-3" /> Copy Link
+                          </button>
+                          <a
+                            href={publicUrl}
+                            download
+                            className="lila-btn-secondary flex items-center gap-1 text-xs"
+                          >
+                            <Download className="h-3 w-3" /> Download File
+                          </a>
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: "#A89DC4" }}>
+                          💡 This link can be used to send the recording to external tools like Make.com
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
                       <button className="lila-btn-secondary" onClick={() => navigate("/dashboard")}>
-                        Back to Dashboard
+                        Go to Dashboard
                       </button>
                       <button className="lila-btn-primary" onClick={() => navigate("/live")}>
                         View Live Monitor
