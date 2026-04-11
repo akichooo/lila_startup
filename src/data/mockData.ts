@@ -11,6 +11,7 @@ export interface Student {
 export interface Group {
   id: string;
   name: string;
+  ageRange: "6-8" | "9-10" | "11-12";
   students: Student[];
   lastSession: string;
   nextSession?: string;
