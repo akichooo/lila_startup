@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/bridge/AppShell";
-import { GROUPS, STUDENTS } from "@/data/mockData";
+import { GROUPS } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { StudentAvatar } from "@/components/bridge/SharedComponents";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Loader2, Mic, Square, Upload, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 const TOPICS = ["Emotions", "Fairness & Rules", "Friendship", "Conflict Resolution", "Community", "Belonging", "Kindness", "Curiosity & Learning", "Custom"];
 
@@ -26,28 +29,158 @@ export default function CreateSessionPage() {
   const [engagementTracking, setEngagementTracking] = useState(true);
   const [launching, setLaunching] = useState(false);
 
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingDone, setRecordingDone] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingBlobRef = useRef<Blob | null>(null);
+
   const group = GROUPS.find((g) => g.id === selectedGroup);
+  const totalSeconds = parseInt(duration) * 60;
+  const progressPercent = Math.min((recordingTime / totalSeconds) * 100, 100);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingDone(true);
+  }, []);
+
+  // Auto-stop when timer reaches estimated duration
+  useEffect(() => {
+    if (isRecording && recordingTime >= totalSeconds) {
+      stopRecording();
+    }
+  }, [isRecording, recordingTime, totalSeconds, stopRecording]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        recordingBlobRef.current = blob;
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorder.start(1000);
+      setRecordingTime(0);
+      setIsRecording(true);
+      setRecordingDone(false);
+      setUploaded(false);
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch {
+      toast.error("Microphone access denied. Please allow microphone access to record.");
+    }
+  };
 
   const handleLaunch = () => {
     setLaunching(true);
-    setTimeout(() => navigate("/live"), 1500);
+    setTimeout(() => setStep(4), 800);
+    setTimeout(() => setLaunching(false), 900);
   };
+
+  const handleUpload = async () => {
+    const blob = recordingBlobRef.current;
+    if (!blob) {
+      toast.error("No recording found.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please sign in to save recordings.");
+        setUploading(false);
+        return;
+      }
+
+      const fileName = `${user.id}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("audio-recordings")
+        .upload(fileName, blob, { contentType: "audio/webm" });
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase.from("sessions").insert({
+        user_id: user.id,
+        session_name: sessionName || "Untitled Session",
+        topic,
+        description,
+        duration_minutes: parseInt(duration),
+        grade,
+        group_id: selectedGroup,
+        misinfo_correction: misinfoCorrection,
+        participation_balance: participationBalance,
+        engagement_tracking: engagementTracking,
+        recording_path: fileName,
+        status: "completed",
+      });
+
+      if (dbError) throw dbError;
+
+      setUploaded(true);
+      toast.success("Recording saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save recording.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   return (
     <AppShell pageTitle="Create Session">
       <div className="mx-auto max-w-[700px]">
         {/* Progress stepper */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2, 3, 4].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
                 style={step >= s ? { background: "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)", color: "white" } : { background: "#EDE9FF", color: "#7C6FAA" }}
               >{s}</div>
-              <span className={`text-sm hidden sm:inline font-bold ${step >= s ? "" : ""}`} style={{ color: step >= s ? "#2D1B69" : "#A89DC4" }}>
-                {s === 1 ? "Setup" : s === 2 ? "Group" : "Review"}
+              <span className={`text-sm hidden sm:inline font-bold`} style={{ color: step >= s ? "#2D1B69" : "#A89DC4" }}>
+                {s === 1 ? "Setup" : s === 2 ? "Group" : s === 3 ? "Review" : "Record"}
               </span>
-              {s < 3 && <div className="h-0.5 w-12 rounded-full" style={{ background: step > s ? "#A78BFA" : "#EDE9FF" }} />}
+              {s < 4 && <div className="h-0.5 w-8 rounded-full" style={{ background: step > s ? "#A78BFA" : "#EDE9FF" }} />}
             </div>
           ))}
         </div>
@@ -156,17 +289,113 @@ export default function CreateSessionPage() {
 
               <div className="rounded-2xl p-4 flex items-start gap-3" style={{ background: "#EDE9FF", border: "1.5px solid #C4B5FD" }}>
                 <Shield className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "#A78BFA" }} />
-                <p className="text-sm" style={{ color: "#7C6FAA" }}>Student responses in this session are recorded for session summary generation only. No audio or video is collected. Summaries are only visible to you and authorized school staff.</p>
+                <p className="text-sm" style={{ color: "#7C6FAA" }}>Student responses in this session are recorded for session summary generation only. No video is collected. Summaries are only visible to you and authorized school staff.</p>
               </div>
 
               <div className="flex justify-between pt-4">
                 <button className="lila-btn-secondary" onClick={() => setStep(2)}>Back</button>
-                <div className="flex gap-3">
-                  <button className="lila-btn-secondary">Save as Draft</button>
-                  <button className="lila-btn-primary" onClick={handleLaunch} disabled={launching}>
-                    {launching ? <><Loader2 className="mr-2 h-4 w-4 animate-spin inline" /> Setting up…</> : "Launch Session"}
-                  </button>
+                <button className="lila-btn-primary" onClick={handleLaunch} disabled={launching}>
+                  {launching ? <><Loader2 className="mr-2 h-4 w-4 animate-spin inline" /> Setting up…</> : "Launch & Record"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-6">
+              <h2 className="font-extrabold text-center" style={{ color: "#2D1B69" }}>
+                {uploaded ? "Session Complete! ✨" : recordingDone ? "Recording Complete" : isRecording ? "Recording in Progress" : "Ready to Record"}
+              </h2>
+
+              {/* Session info summary */}
+              <div className="flex justify-center gap-4 flex-wrap">
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#EDE9FF", color: "#7C3AED" }}>{topic || "No topic"}</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#EDE9FF", color: "#7C3AED" }}>{group?.name || "No group"}</span>
+                <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#EDE9FF", color: "#7C3AED" }}>{duration} min</span>
+              </div>
+
+              {/* Timer display */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative flex items-center justify-center">
+                  <div
+                    className="h-40 w-40 rounded-full flex items-center justify-center"
+                    style={{
+                      background: isRecording
+                        ? "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)"
+                        : uploaded
+                        ? "linear-gradient(135deg, #6EE7B7 0%, #7DD3FC 100%)"
+                        : recordingDone
+                        ? "linear-gradient(135deg, #FCD34D 0%, #FDBA74 100%)"
+                        : "#EDE9FF",
+                      boxShadow: isRecording ? "0 0 40px rgba(167,139,250,0.4)" : "none",
+                    }}
+                  >
+                    <div className="h-32 w-32 rounded-full bg-white flex flex-col items-center justify-center">
+                      {uploaded ? (
+                        <CheckCircle2 className="h-10 w-10" style={{ color: "#6EE7B7" }} />
+                      ) : (
+                        <>
+                          <span className="text-3xl font-extrabold" style={{ color: "#2D1B69" }}>
+                            {formatTime(recordingTime)}
+                          </span>
+                          <span className="text-xs mt-1" style={{ color: "#A89DC4" }}>
+                            / {formatTime(totalSeconds)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {isRecording && (
+                    <div className="absolute inset-0 h-40 w-40 rounded-full animate-ping opacity-20" style={{ background: "#A78BFA" }} />
+                  )}
                 </div>
+
+                {/* Progress bar */}
+                {(isRecording || recordingDone) && !uploaded && (
+                  <div className="w-full max-w-xs">
+                    <Progress value={progressPercent} className="h-2" />
+                  </div>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="flex justify-center gap-4 pt-2">
+                {!isRecording && !recordingDone && !uploaded && (
+                  <button className="lila-btn-primary flex items-center gap-2" onClick={startRecording}>
+                    <Mic className="h-5 w-5" /> Start Recording
+                  </button>
+                )}
+
+                {isRecording && (
+                  <button
+                    className="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-white"
+                    style={{ background: "linear-gradient(135deg, #FB7185 0%, #FDBA74 100%)" }}
+                    onClick={stopRecording}
+                  >
+                    <Square className="h-4 w-4" /> Stop Recording
+                  </button>
+                )}
+
+                {recordingDone && !uploaded && (
+                  <>
+                    <button className="lila-btn-secondary flex items-center gap-2" onClick={startRecording}>
+                      <Mic className="h-4 w-4" /> Re-record
+                    </button>
+                    <button className="lila-btn-primary flex items-center gap-2" onClick={handleUpload} disabled={uploading}>
+                      {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : <><Upload className="h-4 w-4" /> Save Recording</>}
+                    </button>
+                  </>
+                )}
+
+                {uploaded && (
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-sm" style={{ color: "#7C6FAA" }}>Recording saved to Lila Cloud ☁️</p>
+                    <div className="flex gap-3">
+                      <button className="lila-btn-secondary" onClick={() => navigate("/dashboard")}>Back to Dashboard</button>
+                      <button className="lila-btn-primary" onClick={() => navigate("/live")}>View Live Monitor</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
