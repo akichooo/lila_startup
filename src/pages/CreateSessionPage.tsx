@@ -12,6 +12,9 @@ import { Shield, Loader2, Mic, Square, Upload, CheckCircle2 } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import Blobby from "@/components/mascots/Blobby";
+import Tangerine from "@/components/mascots/Tangerine";
+import ZapZing from "@/components/mascots/ZapZing";
 
 const TOPICS = [
   "Emotions",
@@ -487,23 +490,23 @@ export default function CreateSessionPage() {
                         }}
                       />
                     </div>
-                    {/* Friendly creature (Lila mascot) */}
+                    {/* Age-appropriate mascot */}
                     <div className="voice-mascot-bob">
-                      <div
-                        className="h-20 w-20 rounded-full flex items-center justify-center text-4xl"
-                        style={{
-                          background: "linear-gradient(135deg, #C4B5FD 0%, #FBCFE8 100%)",
-                          boxShadow: "0 4px 20px rgba(167,139,250,0.25)",
-                        }}
-                      >
-                        <span className="inline-block animate-pulse" style={{ animationDuration: "1.5s" }}>
-                          🦉
-                        </span>
-                      </div>
+                      {grade === "K-1" || grade === "2-3" ? (
+                        <Blobby size={80} state="idle" />
+                      ) : grade === "4-5" ? (
+                        <Tangerine size={80} state="idle" />
+                      ) : (
+                        <ZapZing size={80} state="idle" />
+                      )}
                     </div>
                   </div>
                   <p className="text-sm font-semibold" style={{ color: "#7C6FAA" }}>
-                    Lila is waving hello! Press record when you're ready.
+                    {grade === "K-1" || grade === "2-3"
+                      ? "Blobby is waving hello! Press record when you're ready."
+                      : grade === "4-5"
+                      ? "Tangerine is ready! Press record when you're ready."
+                      : "Zap & Zing are excited! Press record when you're ready."}
                   </p>
                 </div>
               )}

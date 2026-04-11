@@ -14,6 +14,9 @@ import {
   Users,
   Upload,
 } from "lucide-react";
+import Blobby from "@/components/mascots/Blobby";
+import Tangerine from "@/components/mascots/Tangerine";
+import ZapZing from "@/components/mascots/ZapZing";
 
 const features = [
   { icon: MessageSquare, title: "Structured Group Discussions", desc: "Lila leads age-appropriate conversations on teacher-selected topics. Calm, curious, constructive.", gradient: "linear-gradient(135deg, #A78BFA, #C4B5FD)" },
@@ -83,12 +86,14 @@ export default function LandingPage() {
                 ))}
               </div>
             </div>
-            <div className="animate-fade-in hidden lg:flex justify-center relative">
-              <div className="text-[200px] leading-none voice-mascot-bob">💜</div>
+            <div className="animate-fade-in hidden lg:flex justify-center relative items-center">
+              <div className="flex items-end gap-4">
+                <Blobby size={100} state="idle" />
+                <Tangerine size={120} state="idle" />
+                <ZapZing size={100} state="idle" />
+              </div>
               <div className="absolute top-8 right-12 text-4xl animate-bounce" style={{ animationDuration: "3s" }}>⭐</div>
               <div className="absolute bottom-16 left-8 text-3xl animate-bounce" style={{ animationDuration: "2.5s", animationDelay: "0.5s" }}>💬</div>
-              <div className="absolute top-20 left-4 text-2xl animate-bounce" style={{ animationDuration: "3.5s", animationDelay: "1s" }}>❤️</div>
-              <div className="absolute bottom-24 right-4 text-2xl animate-bounce" style={{ animationDuration: "2.8s", animationDelay: "0.3s" }}>🎵</div>
             </div>
           </div>
         </div>
@@ -147,7 +152,7 @@ export default function LandingPage() {
               <button className="bg-white font-bold rounded-full px-8 py-3.5 text-gradient-primary transition-all hover:scale-105">Preview Voice Experience →</button>
             </Link>
           </div>
-          <div className="absolute bottom-4 right-8 text-7xl opacity-60 hidden md:block voice-mascot-bob">🎧</div>
+          <div className="absolute bottom-4 right-8 opacity-60 hidden md:block"><Blobby size={70} state="idle" /></div>
         </div>
       </section>
 
