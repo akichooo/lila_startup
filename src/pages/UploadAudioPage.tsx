@@ -36,7 +36,12 @@ export default function UploadAudioPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { generateAnalysis } = useAnalysis();
+  const { play, startBackgroundMusic, stopBackgroundMusic } = useLilaSound();
 
+  useEffect(() => {
+    startBackgroundMusic("upload");
+    return () => stopBackgroundMusic();
+  }, [startBackgroundMusic, stopBackgroundMusic]);
   const [selectedGroup, setSelectedGroup] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
