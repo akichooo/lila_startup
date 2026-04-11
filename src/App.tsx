@@ -12,6 +12,7 @@ import SummaryPage from "./pages/SummaryPage";
 import TrendsPage from "./pages/TrendsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import SettingsPage from "./pages/SettingsPage";
+import VoiceRoomPage from "./pages/VoiceRoomPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/trends" element={<TrendsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/voice-room" element={<VoiceRoomPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
