@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
+
 import DashboardPage from "./pages/DashboardPage";
 import CreateSessionPage from "./pages/CreateSessionPage";
 import LiveMonitorPage from "./pages/LiveMonitorPage";
@@ -25,7 +25,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/sessions" element={<DashboardPage />} />
           <Route path="/sessions/create" element={<CreateSessionPage />} />

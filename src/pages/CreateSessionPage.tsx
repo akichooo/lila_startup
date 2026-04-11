@@ -38,7 +38,6 @@ export default function CreateSessionPage() {
   const [participationBalance, setParticipationBalance] = useState(true);
   const [engagementTracking, setEngagementTracking] = useState(true);
   const [launching, setLaunching] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -55,33 +54,6 @@ export default function CreateSessionPage() {
   const totalSeconds = parseInt(duration) * 60;
   const progressPercent = Math.min((recordingTime / totalSeconds) * 100, 100);
 
-  // Check authentication on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-
-      if (!user) {
-        toast.error("Please sign in to access this page");
-        navigate("/login");
-      }
-    };
-
-    checkAuth();
-
-    // Subscribe to auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session?.user);
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [navigate]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -152,24 +124,8 @@ export default function CreateSessionPage() {
       return;
     }
 
-    if (!isAuthenticated) {
-      toast.error("Please sign in to save recordings.");
-      navigate("/login");
-      return;
-    }
-
     setUploading(true);
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) {
-        toast.error("Authentication error. Please sign in again.");
-        setUploading(false);
-        navigate("/login");
-        return;
-      }
 
       const fileName = `${user.id}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
 
