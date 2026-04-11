@@ -22,6 +22,7 @@ const categories = [
 
 export default function SettingsPage() {
   const [activeCategory, setActiveCategory] = useState("profile");
+  const { settings: soundSettings, updateSettings: updateSound, testSound, initTone, toneStarted } = useLilaSound();
 
   const handleSave = () => toast.success("Settings saved ✓");
 
