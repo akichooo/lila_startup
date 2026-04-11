@@ -41,6 +41,7 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
             <Route path="/voice-room" element={<ProtectedRoute><VoiceRoomPage /></ProtectedRoute>} />
             <Route path="/upload" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
+            <Route path="/upload-audio" element={<ProtectedRoute><UploadAudioPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
