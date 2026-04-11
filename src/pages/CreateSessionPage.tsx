@@ -126,8 +126,8 @@ export default function CreateSessionPage() {
 
     setUploading(true);
     try {
-
-      const fileName = `${user.id}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
+      const anonymousId = `anon_${Date.now()}`;
+      const fileName = `${anonymousId}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
 
       const { error: uploadError } = await supabase.storage
         .from("audio-recordings")
@@ -136,7 +136,7 @@ export default function CreateSessionPage() {
       if (uploadError) throw uploadError;
 
       const { error: dbError } = await supabase.from("sessions").insert({
-        user_id: user.id,
+        user_id: null,
         session_name: sessionName || "Untitled Session",
         topic,
         description,
