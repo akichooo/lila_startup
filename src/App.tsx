@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AnalysisProvider } from "@/contexts/AnalysisContext";
+import { SoundProvider } from "@/contexts/SoundContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -27,6 +28,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
+        <SoundProvider>
         <AnalysisProvider>
           <BrowserRouter>
             <Routes>
@@ -49,6 +51,7 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </AnalysisProvider>
+        </SoundProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Blobby from "@/components/mascots/Blobby";
 import Tangerine from "@/components/mascots/Tangerine";
 import ZapZing from "@/components/mascots/ZapZing";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const STAGES = [
   "Receiving audio file",
@@ -31,16 +32,28 @@ function MascotForAge({ ageRange, state }: { ageRange: string; state: "thinking"
 
 export default function AnalysisProcessingScreen({ onComplete, ageRange = "6-8" }: AnalysisProcessingScreenProps) {
   const [completedStages, setCompletedStages] = useState(0);
+  const { play } = useLilaSound();
+  const prevStages = useRef(0);
 
   useEffect(() => {
+    // Play tick sound when a new stage completes
+    if (completedStages > prevStages.current && completedStages <= STAGES.length) {
+      play("analysis-tick");
+    }
+    prevStages.current = completedStages;
+
     if (completedStages >= STAGES.length) {
+      // Play success + mascot sound when done
+      const mascotSound = ageRange === "9-10" ? "mascot-tangerine" : ageRange === "11-12" ? "mascot-zapzing" : "mascot-blobby";
+      play("success");
+      setTimeout(() => play(mascotSound as any), 300);
       const t = setTimeout(onComplete, 800);
       return () => clearTimeout(t);
     }
     const delay = 1000 + Math.random() * 1000;
     const t = setTimeout(() => setCompletedStages((p) => p + 1), delay);
     return () => clearTimeout(t);
-  }, [completedStages, onComplete]);
+  }, [completedStages, onComplete, play, ageRange]);
 
   return (
     <div className="flex flex-col items-center gap-6 py-8">

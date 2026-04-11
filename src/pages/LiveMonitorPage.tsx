@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { toast } from "sonner";
 import Blobby from "@/components/mascots/Blobby";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const participationData = [
   { name: "Lena", value: 18, color: "#A78BFA" },
@@ -54,6 +55,7 @@ interface MarkedMoment {
 export default function LiveMonitorPage() {
   const navigate = useNavigate();
   const { generateAnalysis } = useAnalysis();
+  const { play } = useLilaSound();
   const [note, setNote] = useState("");
   const [noteInputShake, setNoteInputShake] = useState(false);
   const [status, setStatus] = useState<SessionStatus>("live");
@@ -96,6 +98,7 @@ export default function LiveMonitorPage() {
       elapsedSeconds,
     };
     setNotes((prev) => [...prev, newNote]);
+    play("save-note");
     setNoteConfirm(`Note saved at ${newNote.timestamp}`);
     setTimeout(() => setNoteConfirm(null), 2500);
     toast.success(`Note saved at ${newNote.timestamp}`);
@@ -109,20 +112,24 @@ export default function LiveMonitorPage() {
       label: "",
     };
     setMarks((prev) => [...prev, newMark]);
+    play("mark");
     toast.success(`Moment marked at ${newMark.timestamp}`);
   };
 
   const handlePauseResume = () => {
     if (status === "live") {
       setStatus("paused");
+      play("toggle");
     } else if (status === "paused") {
       setStatus("live");
+      play("toggle");
     }
   };
 
   const handleEndConfirm = () => {
     setShowEndModal(false);
     setStatus("ended");
+    play("session-end");
     setEndingTransition(true);
 
     // Save session to supabase

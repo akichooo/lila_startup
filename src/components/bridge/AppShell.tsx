@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -13,8 +13,12 @@ import {
   HelpCircle,
   Menu,
   X,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -30,6 +34,35 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const { settings, updateSettings, play, initTone, toneStarted } = useLilaSound();
+
+  // Close volume slider on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (volumeRef.current && !volumeRef.current.contains(e.target as Node)) {
+        setShowVolumeSlider(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSoundToggle = async () => {
+    if (!toneStarted) await initTone();
+    const newEnabled = !settings.enabled;
+    updateSettings({ enabled: newEnabled });
+    if (newEnabled) {
+      setShowVolumeSlider(true);
+    } else {
+      setShowVolumeSlider(false);
+    }
+  };
+
+  const handleNavClick = () => {
+    play("nav-click");
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -59,6 +92,7 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
                 <Link
                   key={item.path}
                   to={item.path}
+                  onClick={handleNavClick}
                   className={`group relative mx-2 mb-2 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold transition-all ${
                     active ? "text-white shadow-md" : "text-white hover:shadow-md"
                   }`}
@@ -87,6 +121,7 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={handleNavClick}
                 className={`flex items-center gap-3 mx-2 px-3 py-2.5 text-sm rounded-2xl transition-all ${
                   active
                     ? "font-bold"
@@ -155,6 +190,30 @@ export function AppShell({ children, pageTitle }: { children: React.ReactNode; p
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground hidden sm:inline-flex px-3 py-1 rounded-full" style={{ background: "#F5F3FF", color: "#7C6FAA" }}>Maplewood Elementary</span>
+            {/* Sound toggle */}
+            <div className="relative" ref={volumeRef}>
+              <button
+                onClick={handleSoundToggle}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={settings.enabled ? "Mute sounds" : "Enable sounds"}
+              >
+                {settings.enabled ? <Volume2 className="h-5 w-5" style={{ color: "#A78BFA" }} /> : <VolumeX className="h-5 w-5" />}
+              </button>
+              {showVolumeSlider && (
+                <div className="absolute right-0 top-10 z-50 rounded-2xl p-4 shadow-lg w-48" style={{ background: "#FFFFFF", border: "1.5px solid #EDE9FF" }}>
+                  <p className="text-xs font-bold mb-2" style={{ color: "#2D1B69" }}>Volume</p>
+                  <Slider
+                    value={[settings.masterVolume]}
+                    onValueChange={([v]) => updateSettings({ masterVolume: v })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                  <p className="text-[10px] text-center mt-1" style={{ color: "#7C6FAA" }}>{settings.masterVolume}%</p>
+                </div>
+              )}
+            </div>
             <button className="relative text-muted-foreground hover:text-foreground" aria-label="Notifications">
               <Bell className="h-5 w-5" />
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-white font-bold" style={{ backgroundColor: "#FB7185" }}>

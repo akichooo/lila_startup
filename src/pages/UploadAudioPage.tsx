@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/bridge/AppShell";
 import { GROUPS } from "@/data/mockData";
@@ -11,6 +11,7 @@ import Blobby from "@/components/mascots/Blobby";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisResultPreview from "@/components/analysis/AnalysisResultPreview";
 import { useAnalysis, type AnalysisResult } from "@/contexts/AnalysisContext";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const ACCEPTED_TYPES = ["audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/wav", "audio/ogg", "audio/webm"];
 const ACCEPTED_EXTENSIONS = ".mp3,.m4a,.wav,.ogg,.webm";
@@ -35,7 +36,12 @@ export default function UploadAudioPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { generateAnalysis } = useAnalysis();
+  const { play, startBackgroundMusic, stopBackgroundMusic } = useLilaSound();
 
+  useEffect(() => {
+    startBackgroundMusic("upload");
+    return () => stopBackgroundMusic();
+  }, [startBackgroundMusic, stopBackgroundMusic]);
   const [selectedGroup, setSelectedGroup] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -106,13 +112,16 @@ export default function UploadAudioPage() {
       const { data: urlData } = supabase.storage.from("recordings").getPublicUrl(fileName);
       setPublicUrl(urlData.publicUrl);
       setPageState("success");
+      play("success");
       toast.success("File uploaded successfully!");
     } catch {
       setPageState("error");
+      play("error");
     }
   };
 
   const handleSendToAnalysis = () => {
+    play("primary-click");
     setPageState("analyzing");
   };
 

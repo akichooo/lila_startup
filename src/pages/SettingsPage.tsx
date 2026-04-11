@@ -4,13 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { User, CalendarDays, Bell, Users, Shield, Share2, Lock } from "lucide-react";
+import { User, CalendarDays, Bell, Users, Shield, Share2, Lock, Volume2 } from "lucide-react";
+import { useLilaSound } from "@/contexts/SoundContext";
 
 const categories = [
   { id: "profile", label: "Profile", icon: User },
   { id: "defaults", label: "Session Defaults", icon: CalendarDays },
   { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "sound", label: "Sound & Music", icon: Volume2 },
   { id: "groups", label: "Groups & Students", icon: Users },
   { id: "privacy", label: "Privacy & Data", icon: Shield },
   { id: "access", label: "Access & Sharing", icon: Share2 },
@@ -19,6 +22,7 @@ const categories = [
 
 export default function SettingsPage() {
   const [activeCategory, setActiveCategory] = useState("profile");
+  const { settings: soundSettings, updateSettings: updateSound, testSound, initTone, toneStarted } = useLilaSound();
 
   const handleSave = () => toast.success("Settings saved ✓");
 
@@ -126,6 +130,46 @@ export default function SettingsPage() {
                 ))}
               </div>
               <button className="lila-btn-primary" onClick={handleSave}>Save Notifications</button>
+            </div>
+          )}
+
+          {activeCategory === "sound" && (
+            <div className="space-y-5">
+              <h3 className="font-extrabold" style={{ color: "#2D1B69" }}>Sound & Music</h3>
+              <div className="flex items-center justify-between">
+                <Label className="font-bold">Master Sound</Label>
+                <Switch checked={soundSettings.enabled} onCheckedChange={async (v) => { if (!toneStarted) await initTone(); updateSound({ enabled: v }); }} />
+              </div>
+              <div>
+                <Label className="text-sm">Master Volume</Label>
+                <Slider value={[soundSettings.masterVolume]} onValueChange={([v]) => updateSound({ masterVolume: v })} min={0} max={100} step={1} className="mt-2" />
+                <p className="text-xs mt-1" style={{ color: "#7C6FAA" }}>{soundSettings.masterVolume}%</p>
+              </div>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal">Background Music</Label>
+                  <Switch checked={soundSettings.backgroundMusic} onCheckedChange={(v) => updateSound({ backgroundMusic: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal">Interface Sound Effects</Label>
+                  <Switch checked={soundSettings.interfaceSounds} onCheckedChange={(v) => updateSound({ interfaceSounds: v })} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="font-normal">Mascot Sounds</Label>
+                  <Switch checked={soundSettings.mascotSounds} onCheckedChange={(v) => updateSound({ mascotSounds: v })} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Background Music Style</Label>
+                <Select value={soundSettings.musicStyle} onValueChange={(v: "piano" | "nature") => updateSound({ musicStyle: v })}>
+                  <SelectTrigger className="rounded-2xl mt-1" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="piano">Soft Piano Ambient</SelectItem>
+                    <SelectItem value="nature">Gentle Nature Tones</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <button className="lila-btn-secondary text-xs !py-2 !px-4" onClick={async () => { if (!toneStarted) await initTone(); testSound(); }}>🔔 Test Sound</button>
             </div>
           )}
 

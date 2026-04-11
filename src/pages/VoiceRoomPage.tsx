@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { AppShell } from "@/components/bridge/AppShell";
 import { Input } from "@/components/ui/input";
+import { useLilaSound } from "@/contexts/SoundContext";
 import {
   Mic,
   MicOff,
@@ -168,6 +169,12 @@ function StateChip({ state }: { state: MascotState }) {
 export default function VoiceRoomPage() {
   const [ageGroup, setAgeGroup] = useState<AgeGroup>("6-8");
   const [mascotState, setMascotState] = useState<MascotState>("idle");
+  const { startBackgroundMusic, stopBackgroundMusic } = useLilaSound();
+
+  useEffect(() => {
+    startBackgroundMusic("voiceroom");
+    return () => stopBackgroundMusic();
+  }, [startBackgroundMusic, stopBackgroundMusic]);
   const [conversationVisible, setConversationVisible] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
