@@ -55,6 +55,7 @@ interface MarkedMoment {
 export default function LiveMonitorPage() {
   const navigate = useNavigate();
   const { generateAnalysis } = useAnalysis();
+  const { play } = useLilaSound();
   const [note, setNote] = useState("");
   const [noteInputShake, setNoteInputShake] = useState(false);
   const [status, setStatus] = useState<SessionStatus>("live");
