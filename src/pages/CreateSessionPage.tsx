@@ -45,6 +45,8 @@ export default function CreateSessionPage() {
   const [recordingDone, setRecordingDone] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const [publicUrl, setPublicUrl] = useState("");
+  const [uploadError, setUploadError] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
