@@ -127,6 +127,7 @@ export default function CreateSessionPage() {
     }
 
     setUploading(true);
+    setUploadError(false);
     try {
       const anonymousId = `anon_${Date.now()}`;
       const fileName = `${anonymousId}/${Date.now()}_${sessionName.replace(/\s+/g, "_") || "session"}.webm`;
@@ -137,7 +138,16 @@ export default function CreateSessionPage() {
 
       if (uploadError) throw uploadError;
 
-      const { error: dbError } = await supabase.from("sessions").insert({
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from("audio-recordings")
+        .getPublicUrl(fileName);
+
+      const filePublicUrl = urlData.publicUrl;
+      setPublicUrl(filePublicUrl);
+
+      // Save session record with the public URL
+      await supabase.from("sessions").insert({
         user_id: null,
         session_name: sessionName || "Untitled Session",
         topic,
@@ -148,16 +158,15 @@ export default function CreateSessionPage() {
         misinfo_correction: misinfoCorrection,
         participation_balance: participationBalance,
         engagement_tracking: engagementTracking,
-        recording_path: fileName,
+        recording_path: filePublicUrl,
         status: "completed",
       });
 
-      if (dbError) throw dbError;
-
       setUploaded(true);
       toast.success("Recording saved successfully!");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save recording.");
+    } catch {
+      setUploadError(true);
+      toast.error("Recording could not be saved. Please try again.");
     } finally {
       setUploading(false);
     }
