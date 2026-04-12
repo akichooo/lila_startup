@@ -14,6 +14,17 @@ const WEBHOOK_URL =
 const WEBHOOK_AUTH = "Basic KyVZLSVtLSVkVCVIOiVN";
 const WEBHOOK_API_KEY = "rAGSM-ug93wDjxn";
 
+function deepParseJson(input: unknown): unknown {
+  if (typeof input === "string") {
+    try {
+      return deepParseJson(JSON.parse(input));
+    } catch {
+      return input;
+    }
+  }
+  return input;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -47,9 +58,7 @@ Deno.serve(async (req) => {
 
     const paatchResponse = await fetch(PAATCH_URL, {
       method: "POST",
-      headers: {
-        Authorization: PAATCH_TOKEN,
-      },
+      headers: { Authorization: PAATCH_TOKEN },
       body: formData,
     });
 
@@ -78,45 +87,45 @@ Deno.serve(async (req) => {
     });
 
     const responseText = await webhookResponse.text();
-    console.log(`Webhook response status: ${webhookResponse.status}`);
-    console.log(`Webhook response (first 500): ${responseText.substring(0, 500)}`);
+    console.log(`Webhook status: ${webhookResponse.status}, length: ${responseText.length}`);
 
-    // Parse webhook response - expecting { Agent: "...", Assestment: {...} }
+    // Parse - handle possible double-encoding from Make.com
     let agentText = "";
     let assessmentData: any = null;
-    let reportJson: any = null;
+    let fullJson: any = null;
 
     try {
-      reportJson = JSON.parse(responseText);
+      // deepParseJson handles double-encoded JSON strings
+      const parsed = deepParseJson(responseText) as any;
 
-      // Handle the Agent/Assestment structure
-      if (reportJson.Agent) {
-        agentText = typeof reportJson.Agent === "string" ? reportJson.Agent : JSON.stringify(reportJson.Agent);
-      }
-      if (reportJson.Assestment) {
-        assessmentData = reportJson.Assestment;
-      }
+      if (parsed && typeof parsed === "object") {
+        fullJson = parsed;
 
-      // Fallback: if no Agent key, try other common patterns
-      if (!agentText) {
-        if (typeof reportJson === "string") {
-          agentText = reportJson;
-        } else if (reportJson.report) {
-          agentText = reportJson.report;
-        } else if (reportJson.text) {
-          agentText = reportJson.text;
-        } else if (reportJson.result) {
-          agentText = typeof reportJson.result === "string" ? reportJson.result : JSON.stringify(reportJson.result);
-        } else {
-          agentText = responseText;
+        // Extract Agent text
+        if (parsed.Agent) {
+          agentText = typeof parsed.Agent === "string" ? parsed.Agent : JSON.stringify(parsed.Agent);
         }
+
+        // Extract Assessment (note: Make.com spells it "Assestment")
+        if (parsed.Assestment) {
+          assessmentData = typeof parsed.Assestment === "string" 
+            ? deepParseJson(parsed.Assestment) 
+            : parsed.Assestment;
+        }
+      }
+
+      // Fallback if no Agent key found
+      if (!agentText) {
+        agentText = typeof parsed === "string" ? parsed : responseText;
       }
     } catch {
       agentText = responseText;
-      reportJson = { report: responseText };
+      fullJson = { raw: responseText };
     }
 
-    // Save to database - store the full JSON and agent text
+    console.log(`Parsed: Agent length=${agentText.length}, Assessment=${assessmentData ? "present" : "missing"}`);
+
+    // Save to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -127,7 +136,7 @@ Deno.serve(async (req) => {
         session_id,
         audio_url,
         report_text: agentText,
-        report_json: reportJson,
+        report_json: fullJson,
       });
 
     if (insertError) {
@@ -139,7 +148,7 @@ Deno.serve(async (req) => {
         success: true,
         report_text: agentText,
         assessment_data: assessmentData,
-        report_json: reportJson,
+        report_json: fullJson,
         transcription: transcriptionResult,
         webhook_status: webhookResponse.status,
       }),
