@@ -139,6 +139,11 @@ export default function UploadAudioPage() {
         body: { audio_url: publicUrl, session_id: sessionId },
       });
       if (error) throw error;
+      if (data.error === "RATE_LIMITED" || data.fallback) {
+        toast.error(data.message || "Rate limit reached. Please try again later.");
+        setPageState("success");
+        return;
+      }
       setWebhookReport(data.report_text || "No report returned.");
       setWebhookAssessment(data.assessment_data || null);
       setPageState("webhook-done");
