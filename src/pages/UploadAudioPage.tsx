@@ -370,12 +370,17 @@ export default function UploadAudioPage() {
                       <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="lila-btn-secondary flex items-center gap-1.5 text-xs">
                         <Download className="h-3.5 w-3.5" /> Download File
                       </a>
-                      <button className="lila-btn-primary flex items-center gap-1.5 text-xs" onClick={handleSendToAnalysis}>
-                        <Send className="h-3.5 w-3.5" /> Send to Analysis
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <button className="lila-btn-primary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToWebhook}>
+                        <FileText className="h-4 w-4" /> Send to Make.com
+                      </button>
+                      <button className="lila-btn-secondary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToAnalysis}>
+                        <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
                     <p className="text-xs" style={{ color: "#A89DC4" }}>
-                      💡 Paste this link directly into make.com — no login or API key needed.
+                      💡 "Send to Make.com" sends the audio to your webhook and returns a full report. "Quick Analysis" generates a local demo analysis.
                     </p>
                   </div>
                   <div className="flex gap-3">
