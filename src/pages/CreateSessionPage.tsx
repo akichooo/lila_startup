@@ -717,15 +717,10 @@ export default function CreateSessionPage() {
                           setAnalysisState("webhook-done");
                           toast.success("Analysis report received!");
                         } catch {
-                          toast.error("Could not get report from Make.com. Please try again.");
+                          toast.error("Could not get the analysis report. Please try again.");
                           setAnalysisState("idle");
                         }
                       }}>
-                        <FileText className="h-4 w-4" /> Send to Make.com
-                      </button>
-                    </div>
-                    <div className="flex gap-3 w-full">
-                      <button className="lila-btn-secondary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
                         <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
