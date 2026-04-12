@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, ChevronDown, ChevronUp, BarChart3, LayoutDashboard } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp, BarChart3, LayoutDashboard, Download } from "lucide-react";
 import AssessmentCharts from "./AssessmentCharts";
 
 interface WebhookReportViewerProps {
@@ -98,9 +98,31 @@ export default function WebhookReportViewer({ reportText, sessionId, assessmentD
         </div>
       </Section>
 
-      <p className="text-xs italic" style={{ color: "#A89DC4" }}>
-        This report was generated automatically and saved for this session.
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs italic" style={{ color: "#A89DC4" }}>
+          This report was generated automatically and saved for this session.
+        </p>
+        <button
+          onClick={() => {
+            const blob = new Blob([reportText], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `session-report-${sessionId}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+          style={{
+            background: "linear-gradient(135deg, #7C3AED, #A78BFA)",
+            color: "#fff",
+            boxShadow: "0 4px 14px rgba(124,58,237,0.3)",
+          }}
+        >
+          <Download className="h-4 w-4" />
+          Download Report
+        </button>
+      </div>
     </div>
   );
 }
