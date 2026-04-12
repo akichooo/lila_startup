@@ -60,6 +60,7 @@ export default function CreateSessionPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [webhookReport, setWebhookReport] = useState("");
   const [webhookSessionId, setWebhookSessionId] = useState("");
+  const [webhookAssessment, setWebhookAssessment] = useState<any>(null);
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
   const totalSeconds = parseInt(duration) * 60;
@@ -714,6 +715,7 @@ export default function CreateSessionPage() {
                           });
                           if (error) throw error;
                           setWebhookReport(data.report_text || "No report returned.");
+                          setWebhookAssessment(data.assessment_data || null);
                           setAnalysisState("webhook-done");
                           toast.success("Analysis report received!");
                         } catch {
@@ -761,7 +763,7 @@ export default function CreateSessionPage() {
 
                 {uploaded && analysisState === "webhook-done" && webhookReport && (
                   <div className="w-full">
-                    <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+                    <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} assessmentData={webhookAssessment} />
                     <div className="flex gap-3 mt-4">
                       <button className="lila-btn-secondary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
                     </div>

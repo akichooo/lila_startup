@@ -54,6 +54,7 @@ export default function UploadAudioPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [webhookReport, setWebhookReport] = useState("");
   const [webhookSessionId, setWebhookSessionId] = useState("");
+  const [webhookAssessment, setWebhookAssessment] = useState<any>(null);
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
 
@@ -139,6 +140,7 @@ export default function UploadAudioPage() {
       });
       if (error) throw error;
       setWebhookReport(data.report_text || "No report returned.");
+      setWebhookAssessment(data.assessment_data || null);
       setPageState("webhook-done");
       play("success");
       toast.success("Analysis report received!");
@@ -178,6 +180,7 @@ export default function UploadAudioPage() {
     setAnalysisResult(null);
     setWebhookReport("");
     setWebhookSessionId("");
+    setWebhookAssessment(null);
   };
 
   return (
@@ -200,7 +203,7 @@ export default function UploadAudioPage() {
           {/* Webhook report done */}
           {pageState === "webhook-done" && webhookReport && (
             <div className="space-y-4">
-              <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+              <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} assessmentData={webhookAssessment} />
               <div className="flex gap-3">
                 <button className="lila-btn-secondary flex-1" onClick={resetPage}>Upload Another</button>
                 <button className="lila-btn-primary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
