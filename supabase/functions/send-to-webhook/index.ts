@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
 
     console.log(`Step 1: Downloading audio from ${audio_url}`);
 
-    // Step 1: Download the audio file from storage
     const audioResponse = await fetch(audio_url);
     if (!audioResponse.ok) {
       throw new Error(`Failed to download audio: ${audioResponse.status}`);
@@ -41,7 +40,6 @@ Deno.serve(async (req) => {
 
     console.log(`Downloaded audio: ${audioBlob.size} bytes, sending to Paatch...`);
 
-    // Step 2: Send audio to Paatch for transcription
     const formData = new FormData();
     formData.append("file", audioBlob, fileName);
     formData.append("language", "en");
@@ -61,9 +59,8 @@ Deno.serve(async (req) => {
     }
 
     const transcriptionResult = await paatchResponse.json();
-    console.log(`Step 2: Paatch transcription complete. Keys: ${Object.keys(transcriptionResult).join(", ")}`);
+    console.log(`Step 2: Paatch transcription complete.`);
 
-    // Step 3: Send transcription to Make.com webhook
     console.log(`Step 3: Sending transcription to Make.com...`);
 
     const webhookResponse = await fetch(WEBHOOK_URL, {
@@ -84,26 +81,42 @@ Deno.serve(async (req) => {
     console.log(`Webhook response status: ${webhookResponse.status}`);
     console.log(`Webhook response (first 500): ${responseText.substring(0, 500)}`);
 
-    // Parse webhook response
+    // Parse webhook response - expecting { Agent: "...", Assestment: {...} }
+    let agentText = "";
+    let assessmentData: any = null;
     let reportJson: any = null;
-    let reportText = responseText;
+
     try {
       reportJson = JSON.parse(responseText);
-      if (typeof reportJson === "string") {
-        reportText = reportJson;
-        reportJson = { report: reportJson };
-      } else if (reportJson.report) {
-        reportText = reportJson.report;
-      } else if (reportJson.text) {
-        reportText = reportJson.text;
-      } else if (reportJson.result) {
-        reportText = typeof reportJson.result === "string" ? reportJson.result : JSON.stringify(reportJson.result);
+
+      // Handle the Agent/Assestment structure
+      if (reportJson.Agent) {
+        agentText = typeof reportJson.Agent === "string" ? reportJson.Agent : JSON.stringify(reportJson.Agent);
+      }
+      if (reportJson.Assestment) {
+        assessmentData = reportJson.Assestment;
+      }
+
+      // Fallback: if no Agent key, try other common patterns
+      if (!agentText) {
+        if (typeof reportJson === "string") {
+          agentText = reportJson;
+        } else if (reportJson.report) {
+          agentText = reportJson.report;
+        } else if (reportJson.text) {
+          agentText = reportJson.text;
+        } else if (reportJson.result) {
+          agentText = typeof reportJson.result === "string" ? reportJson.result : JSON.stringify(reportJson.result);
+        } else {
+          agentText = responseText;
+        }
       }
     } catch {
+      agentText = responseText;
       reportJson = { report: responseText };
     }
 
-    // Save to database
+    // Save to database - store the full JSON and agent text
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -113,7 +126,7 @@ Deno.serve(async (req) => {
       .insert({
         session_id,
         audio_url,
-        report_text: reportText,
+        report_text: agentText,
         report_json: reportJson,
       });
 
@@ -124,7 +137,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        report_text: reportText,
+        report_text: agentText,
+        assessment_data: assessmentData,
         report_json: reportJson,
         transcription: transcriptionResult,
         webhook_status: webhookResponse.status,
