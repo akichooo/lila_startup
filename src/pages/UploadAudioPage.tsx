@@ -4,12 +4,13 @@ import { AppShell } from "@/components/bridge/AppShell";
 import { GROUPS } from "@/data/mockData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, FileAudio, Copy, Download, Send, CheckCircle2, AlertCircle, X, RotateCcw } from "lucide-react";
+import { Upload, FileAudio, Copy, Download, Send, CheckCircle2, AlertCircle, X, RotateCcw, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Blobby from "@/components/mascots/Blobby";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisResultPreview from "@/components/analysis/AnalysisResultPreview";
+import WebhookReportViewer from "@/components/analysis/WebhookReportViewer";
 import { useAnalysis, type AnalysisResult } from "@/contexts/AnalysisContext";
 import { useLilaSound } from "@/contexts/SoundContext";
 
@@ -30,7 +31,7 @@ function sanitizeFileName(name: string): string {
   return `${safe}.${ext}`;
 }
 
-type PageState = "pick" | "uploading" | "success" | "analyzing" | "analyzed" | "error";
+type PageState = "pick" | "uploading" | "success" | "analyzing" | "analyzed" | "error" | "sending-webhook" | "webhook-done";
 
 export default function UploadAudioPage() {
   const navigate = useNavigate();
