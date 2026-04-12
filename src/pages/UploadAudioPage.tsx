@@ -219,7 +219,7 @@ export default function UploadAudioPage() {
           )}
 
           {/* Normal states: pick, uploading, success, error */}
-          {!["analyzing", "analyzed"].includes(pageState) && (
+          {!["analyzing", "analyzed", "sending-webhook", "webhook-done"].includes(pageState) && (
             <>
               {/* Blobby mascot */}
               <div className="flex flex-col items-center gap-2 mb-4">
