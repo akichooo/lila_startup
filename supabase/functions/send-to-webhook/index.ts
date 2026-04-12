@@ -106,11 +106,12 @@ Deno.serve(async (req) => {
           agentText = typeof parsed.Agent === "string" ? parsed.Agent : JSON.stringify(parsed.Agent);
         }
 
-        // Extract Assessment (note: Make.com spells it "Assestment")
-        if (parsed.Assestment) {
-          assessmentData = typeof parsed.Assestment === "string" 
-            ? deepParseJson(parsed.Assestment) 
-            : parsed.Assestment;
+        // Extract Assessment (handle both spellings)
+        const rawAssessment = parsed.Assessment || parsed.Assestment;
+        if (rawAssessment) {
+          assessmentData = typeof rawAssessment === "string" 
+            ? deepParseJson(rawAssessment) 
+            : rawAssessment;
         }
       }
 
