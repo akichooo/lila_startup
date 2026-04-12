@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const PAATCH_URL = "https://transcript.paatch.ai/api/v1/transcribe";
+const PAATCH_TOKEN = "Bearer paatch_hk_569cc43a4707ed13eee9331a28afb57d4dbdacd3aab5d840";
+
 const WEBHOOK_URL =
   "https://hook.eu1.make.com/p0vpb46s8mgcwk8o5raoepjwbh15ft10";
 const WEBHOOK_AUTH = "Basic KyVZLSVtLSVkVCVIOiVN";
@@ -26,9 +29,43 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Sending audio to webhook: ${audio_url} for session ${session_id}`);
+    console.log(`Step 1: Downloading audio from ${audio_url}`);
 
-    // Send to Make.com webhook
+    // Step 1: Download the audio file from storage
+    const audioResponse = await fetch(audio_url);
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to download audio: ${audioResponse.status}`);
+    }
+    const audioBlob = await audioResponse.blob();
+    const fileName = audio_url.split("/").pop() || "audio.mp3";
+
+    console.log(`Downloaded audio: ${audioBlob.size} bytes, sending to Paatch...`);
+
+    // Step 2: Send audio to Paatch for transcription
+    const formData = new FormData();
+    formData.append("file", audioBlob, fileName);
+    formData.append("language", "en");
+    formData.append("format", "json");
+
+    const paatchResponse = await fetch(PAATCH_URL, {
+      method: "POST",
+      headers: {
+        Authorization: PAATCH_TOKEN,
+      },
+      body: formData,
+    });
+
+    if (!paatchResponse.ok) {
+      const errText = await paatchResponse.text();
+      throw new Error(`Paatch transcription failed [${paatchResponse.status}]: ${errText}`);
+    }
+
+    const transcriptionResult = await paatchResponse.json();
+    console.log(`Step 2: Paatch transcription complete. Keys: ${Object.keys(transcriptionResult).join(", ")}`);
+
+    // Step 3: Send transcription to Make.com webhook
+    console.log(`Step 3: Sending transcription to Make.com...`);
+
     const webhookResponse = await fetch(WEBHOOK_URL, {
       method: "POST",
       headers: {
@@ -37,21 +74,21 @@ Deno.serve(async (req) => {
         "x-make-apikey": WEBHOOK_API_KEY,
       },
       body: JSON.stringify({
-        audio_url,
         session_id,
+        audio_url,
+        transcription: transcriptionResult,
       }),
     });
 
     const responseText = await webhookResponse.text();
     console.log(`Webhook response status: ${webhookResponse.status}`);
-    console.log(`Webhook response body (first 500 chars): ${responseText.substring(0, 500)}`);
+    console.log(`Webhook response (first 500): ${responseText.substring(0, 500)}`);
 
-    // Try to parse as JSON, otherwise treat as plain text report
+    // Parse webhook response
     let reportJson: any = null;
     let reportText = responseText;
     try {
       reportJson = JSON.parse(responseText);
-      // If the JSON has a specific text field, extract it
       if (typeof reportJson === "string") {
         reportText = reportJson;
         reportJson = { report: reportJson };
@@ -63,7 +100,6 @@ Deno.serve(async (req) => {
         reportText = typeof reportJson.result === "string" ? reportJson.result : JSON.stringify(reportJson.result);
       }
     } catch {
-      // Response is plain text, that's fine
       reportJson = { report: responseText };
     }
 
@@ -90,6 +126,7 @@ Deno.serve(async (req) => {
         success: true,
         report_text: reportText,
         report_json: reportJson,
+        transcription: transcriptionResult,
         webhook_status: webhookResponse.status,
       }),
       {
@@ -98,7 +135,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("Pipeline error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
