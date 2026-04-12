@@ -756,6 +756,23 @@ export default function CreateSessionPage() {
                   </div>
                 )}
 
+                {uploaded && analysisState === "sending-webhook" && (
+                  <div className="w-full max-w-md flex flex-col items-center gap-4 py-8">
+                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#A78BFA" }} />
+                    <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Sending to Make.com for analysis…</p>
+                    <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment depending on your workflow.</p>
+                  </div>
+                )}
+
+                {uploaded && analysisState === "webhook-done" && webhookReport && (
+                  <div className="w-full">
+                    <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+                    <div className="flex gap-3 mt-4">
+                      <button className="lila-btn-secondary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
+                    </div>
+                  </div>
+                )}
+
                 {uploaded && analysisState === "done" && analysisResult && (
                   <div className="w-full">
                     <AnalysisResultPreview result={analysisResult} />
