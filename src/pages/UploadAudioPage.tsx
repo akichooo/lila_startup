@@ -191,9 +191,9 @@ export default function UploadAudioPage() {
               <Blobby size={140} state="thinking" />
               <div className="flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#A78BFA" }} />
-                <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Sending to Make.com for analysis…</p>
+                <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Transcribing and analyzing your audio…</p>
               </div>
-              <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment depending on your workflow.</p>
+              <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment while we transcribe and generate the report.</p>
             </div>
           )}
 
@@ -373,14 +373,11 @@ export default function UploadAudioPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2">
                       <button className="lila-btn-primary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToWebhook}>
-                        <FileText className="h-4 w-4" /> Send to Make.com
-                      </button>
-                      <button className="lila-btn-secondary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToAnalysis}>
                         <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
                     <p className="text-xs" style={{ color: "#A89DC4" }}>
-                      💡 "Send to Make.com" sends the audio to your webhook and returns a full report. "Quick Analysis" generates a local demo analysis.
+                      💡 Sends the audio for transcription and returns a full analysis report.
                     </p>
                   </div>
                   <div className="flex gap-3">
