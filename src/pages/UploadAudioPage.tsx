@@ -128,6 +128,27 @@ export default function UploadAudioPage() {
     setPageState("analyzing");
   };
 
+  const handleSendToWebhook = async () => {
+    play("primary-click");
+    setPageState("sending-webhook");
+    const sessionId = `upload_${Date.now()}`;
+    setWebhookSessionId(sessionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-to-webhook", {
+        body: { audio_url: publicUrl, session_id: sessionId },
+      });
+      if (error) throw error;
+      setWebhookReport(data.report_text || "No report returned.");
+      setPageState("webhook-done");
+      play("success");
+      toast.success("Analysis report received!");
+    } catch (err) {
+      console.error("Webhook error:", err);
+      toast.error("Could not get report from Make.com. Please try again.");
+      setPageState("success");
+    }
+  };
+
   const handleAnalysisComplete = () => {
     const result = generateAnalysis({
       groupId: selectedGroup || GROUPS[0].id,
