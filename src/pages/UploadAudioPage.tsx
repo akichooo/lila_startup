@@ -52,6 +52,8 @@ export default function UploadAudioPage() {
   const [fileError, setFileError] = useState("");
   const [copied, setCopied] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [webhookReport, setWebhookReport] = useState("");
+  const [webhookSessionId, setWebhookSessionId] = useState("");
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
 
