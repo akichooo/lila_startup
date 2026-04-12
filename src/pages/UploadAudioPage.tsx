@@ -4,12 +4,13 @@ import { AppShell } from "@/components/bridge/AppShell";
 import { GROUPS } from "@/data/mockData";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload, FileAudio, Copy, Download, Send, CheckCircle2, AlertCircle, X, RotateCcw } from "lucide-react";
+import { Upload, FileAudio, Copy, Download, Send, CheckCircle2, AlertCircle, X, RotateCcw, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Blobby from "@/components/mascots/Blobby";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisResultPreview from "@/components/analysis/AnalysisResultPreview";
+import WebhookReportViewer from "@/components/analysis/WebhookReportViewer";
 import { useAnalysis, type AnalysisResult } from "@/contexts/AnalysisContext";
 import { useLilaSound } from "@/contexts/SoundContext";
 
@@ -30,7 +31,7 @@ function sanitizeFileName(name: string): string {
   return `${safe}.${ext}`;
 }
 
-type PageState = "pick" | "uploading" | "success" | "analyzing" | "analyzed" | "error";
+type PageState = "pick" | "uploading" | "success" | "analyzing" | "analyzed" | "error" | "sending-webhook" | "webhook-done";
 
 export default function UploadAudioPage() {
   const navigate = useNavigate();
@@ -51,6 +52,8 @@ export default function UploadAudioPage() {
   const [fileError, setFileError] = useState("");
   const [copied, setCopied] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [webhookReport, setWebhookReport] = useState("");
+  const [webhookSessionId, setWebhookSessionId] = useState("");
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
 
@@ -125,6 +128,27 @@ export default function UploadAudioPage() {
     setPageState("analyzing");
   };
 
+  const handleSendToWebhook = async () => {
+    play("primary-click");
+    setPageState("sending-webhook");
+    const sessionId = `upload_${Date.now()}`;
+    setWebhookSessionId(sessionId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-to-webhook", {
+        body: { audio_url: publicUrl, session_id: sessionId },
+      });
+      if (error) throw error;
+      setWebhookReport(data.report_text || "No report returned.");
+      setPageState("webhook-done");
+      play("success");
+      toast.success("Analysis report received!");
+    } catch (err) {
+      console.error("Webhook error:", err);
+      toast.error("Could not get report from Make.com. Please try again.");
+      setPageState("success");
+    }
+  };
+
   const handleAnalysisComplete = () => {
     const result = generateAnalysis({
       groupId: selectedGroup || GROUPS[0].id,
@@ -152,12 +176,37 @@ export default function UploadAudioPage() {
     setCopied(false);
     setSelectedGroup("");
     setAnalysisResult(null);
+    setWebhookReport("");
+    setWebhookSessionId("");
   };
 
   return (
     <AppShell pageTitle="Upload Audio">
       <div className="mx-auto max-w-[600px]">
         <div className="lila-card-elevated">
+
+          {/* Sending to webhook */}
+          {pageState === "sending-webhook" && (
+            <div className="flex flex-col items-center gap-4 py-12">
+              <Blobby size={140} state="thinking" />
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#A78BFA" }} />
+                <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Sending to Make.com for analysis…</p>
+              </div>
+              <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment depending on your workflow.</p>
+            </div>
+          )}
+
+          {/* Webhook report done */}
+          {pageState === "webhook-done" && webhookReport && (
+            <div className="space-y-4">
+              <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+              <div className="flex gap-3">
+                <button className="lila-btn-secondary flex-1" onClick={resetPage}>Upload Another</button>
+                <button className="lila-btn-primary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
+              </div>
+            </div>
+          )}
 
           {/* Analyzing state */}
           {pageState === "analyzing" && (
@@ -170,7 +219,7 @@ export default function UploadAudioPage() {
           )}
 
           {/* Normal states: pick, uploading, success, error */}
-          {!["analyzing", "analyzed"].includes(pageState) && (
+          {!["analyzing", "analyzed", "sending-webhook", "webhook-done"].includes(pageState) && (
             <>
               {/* Blobby mascot */}
               <div className="flex flex-col items-center gap-2 mb-4">
@@ -321,12 +370,17 @@ export default function UploadAudioPage() {
                       <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="lila-btn-secondary flex items-center gap-1.5 text-xs">
                         <Download className="h-3.5 w-3.5" /> Download File
                       </a>
-                      <button className="lila-btn-primary flex items-center gap-1.5 text-xs" onClick={handleSendToAnalysis}>
-                        <Send className="h-3.5 w-3.5" /> Send to Analysis
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <button className="lila-btn-primary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToWebhook}>
+                        <FileText className="h-4 w-4" /> Send to Make.com
+                      </button>
+                      <button className="lila-btn-secondary flex items-center gap-1.5 text-sm flex-1" onClick={handleSendToAnalysis}>
+                        <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
                     <p className="text-xs" style={{ color: "#A89DC4" }}>
-                      💡 Paste this link directly into make.com — no login or API key needed.
+                      💡 "Send to Make.com" sends the audio to your webhook and returns a full report. "Quick Analysis" generates a local demo analysis.
                     </p>
                   </div>
                   <div className="flex gap-3">

@@ -8,13 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { StudentAvatar } from "@/components/bridge/SharedComponents";
-import { Shield, Loader2, Mic, Square, Upload, CheckCircle2, Copy, Download, AlertCircle, Send } from "lucide-react";
+import { Shield, Loader2, Mic, Square, Upload, CheckCircle2, Copy, Download, AlertCircle, Send, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisResultPreview from "@/components/analysis/AnalysisResultPreview";
 import { useAnalysis, type AnalysisResult } from "@/contexts/AnalysisContext";
+import WebhookReportViewer from "@/components/analysis/WebhookReportViewer";
 
 const TOPICS = [
   "Emotions",
@@ -55,8 +56,10 @@ export default function CreateSessionPage() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingBlobRef = useRef<Blob | null>(null);
-  const [analysisState, setAnalysisState] = useState<"idle" | "analyzing" | "done">("idle");
+  const [analysisState, setAnalysisState] = useState<"idle" | "analyzing" | "done" | "sending-webhook" | "webhook-done">("idle");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [webhookReport, setWebhookReport] = useState("");
+  const [webhookSessionId, setWebhookSessionId] = useState("");
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
   const totalSeconds = parseInt(duration) * 60;
@@ -701,8 +704,29 @@ export default function CreateSessionPage() {
                     )}
 
                     <div className="flex gap-3 pt-2 w-full">
-                      <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
-                        <Send className="h-4 w-4" /> Send to Analysis
+                      <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={async () => {
+                        setAnalysisState("sending-webhook");
+                        const sid = `session_${Date.now()}`;
+                        setWebhookSessionId(sid);
+                        try {
+                          const { data, error } = await supabase.functions.invoke("send-to-webhook", {
+                            body: { audio_url: publicUrl, session_id: sid },
+                          });
+                          if (error) throw error;
+                          setWebhookReport(data.report_text || "No report returned.");
+                          setAnalysisState("webhook-done");
+                          toast.success("Analysis report received!");
+                        } catch {
+                          toast.error("Could not get report from Make.com. Please try again.");
+                          setAnalysisState("idle");
+                        }
+                      }}>
+                        <FileText className="h-4 w-4" /> Send to Make.com
+                      </button>
+                    </div>
+                    <div className="flex gap-3 w-full">
+                      <button className="lila-btn-secondary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
+                        <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
                     <div className="flex gap-3 w-full">
@@ -729,6 +753,23 @@ export default function CreateSessionPage() {
                       setAnalysisResult(result);
                       setAnalysisState("done");
                     }} />
+                  </div>
+                )}
+
+                {uploaded && analysisState === "sending-webhook" && (
+                  <div className="w-full max-w-md flex flex-col items-center gap-4 py-8">
+                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: "#A78BFA" }} />
+                    <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Sending to Make.com for analysis…</p>
+                    <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment depending on your workflow.</p>
+                  </div>
+                )}
+
+                {uploaded && analysisState === "webhook-done" && webhookReport && (
+                  <div className="w-full">
+                    <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+                    <div className="flex gap-3 mt-4">
+                      <button className="lila-btn-secondary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
+                    </div>
                   </div>
                 )}
 
