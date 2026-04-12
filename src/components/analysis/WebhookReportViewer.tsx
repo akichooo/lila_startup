@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, ChevronDown, ChevronUp, BarChart3, LayoutDashboard } from "lucide-react";
+import { FileText, ChevronDown, ChevronUp, BarChart3, LayoutDashboard, Download } from "lucide-react";
 import AssessmentCharts from "./AssessmentCharts";
 
 interface WebhookReportViewerProps {
