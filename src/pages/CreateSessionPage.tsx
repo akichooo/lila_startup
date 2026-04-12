@@ -704,8 +704,29 @@ export default function CreateSessionPage() {
                     )}
 
                     <div className="flex gap-3 pt-2 w-full">
-                      <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
-                        <Send className="h-4 w-4" /> Send to Analysis
+                      <button className="lila-btn-primary flex-1 flex items-center justify-center gap-2" onClick={async () => {
+                        setAnalysisState("sending-webhook");
+                        const sid = `session_${Date.now()}`;
+                        setWebhookSessionId(sid);
+                        try {
+                          const { data, error } = await supabase.functions.invoke("send-to-webhook", {
+                            body: { audio_url: publicUrl, session_id: sid },
+                          });
+                          if (error) throw error;
+                          setWebhookReport(data.report_text || "No report returned.");
+                          setAnalysisState("webhook-done");
+                          toast.success("Analysis report received!");
+                        } catch {
+                          toast.error("Could not get report from Make.com. Please try again.");
+                          setAnalysisState("idle");
+                        }
+                      }}>
+                        <FileText className="h-4 w-4" /> Send to Make.com
+                      </button>
+                    </div>
+                    <div className="flex gap-3 w-full">
+                      <button className="lila-btn-secondary flex-1 flex items-center justify-center gap-2" onClick={() => setAnalysisState("analyzing")}>
+                        <Send className="h-4 w-4" /> Quick Analysis
                       </button>
                     </div>
                     <div className="flex gap-3 w-full">
