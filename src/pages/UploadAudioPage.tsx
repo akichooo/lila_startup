@@ -185,6 +185,29 @@ export default function UploadAudioPage() {
       <div className="mx-auto max-w-[600px]">
         <div className="lila-card-elevated">
 
+          {/* Sending to webhook */}
+          {pageState === "sending-webhook" && (
+            <div className="flex flex-col items-center gap-4 py-12">
+              <Blobby size={140} state="thinking" />
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#A78BFA" }} />
+                <p className="text-sm font-bold" style={{ color: "#2D1B69" }}>Sending to Make.com for analysis…</p>
+              </div>
+              <p className="text-xs" style={{ color: "#A89DC4" }}>This may take a moment depending on your workflow.</p>
+            </div>
+          )}
+
+          {/* Webhook report done */}
+          {pageState === "webhook-done" && webhookReport && (
+            <div className="space-y-4">
+              <WebhookReportViewer reportText={webhookReport} sessionId={webhookSessionId} />
+              <div className="flex gap-3">
+                <button className="lila-btn-secondary flex-1" onClick={resetPage}>Upload Another</button>
+                <button className="lila-btn-primary flex-1" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
+              </div>
+            </div>
+          )}
+
           {/* Analyzing state */}
           {pageState === "analyzing" && (
             <AnalysisProcessingScreen onComplete={handleAnalysisComplete} ageRange={group?.ageRange || "6-8"} />
