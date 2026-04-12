@@ -56,8 +56,10 @@ export default function CreateSessionPage() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingBlobRef = useRef<Blob | null>(null);
-  const [analysisState, setAnalysisState] = useState<"idle" | "analyzing" | "done">("idle");
+  const [analysisState, setAnalysisState] = useState<"idle" | "analyzing" | "done" | "sending-webhook" | "webhook-done">("idle");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [webhookReport, setWebhookReport] = useState("");
+  const [webhookSessionId, setWebhookSessionId] = useState("");
 
   const group = GROUPS.find((g) => g.id === selectedGroup);
   const totalSeconds = parseInt(duration) * 60;
