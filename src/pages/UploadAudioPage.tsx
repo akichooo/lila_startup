@@ -176,6 +176,8 @@ export default function UploadAudioPage() {
     setCopied(false);
     setSelectedGroup("");
     setAnalysisResult(null);
+    setWebhookReport("");
+    setWebhookSessionId("");
   };
 
   return (
