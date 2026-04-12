@@ -64,6 +64,20 @@ Deno.serve(async (req) => {
 
     if (!paatchResponse.ok) {
       const errText = await paatchResponse.text();
+      console.error(`Paatch error [${paatchResponse.status}]: ${errText}`);
+      if (paatchResponse.status === 429) {
+        let retryAfter = 60;
+        try { retryAfter = JSON.parse(errText).retryAfter || 60; } catch {}
+        return new Response(
+          JSON.stringify({
+            error: "RATE_LIMITED",
+            message: `Transcription rate limit reached. Please try again in ${Math.ceil(retryAfter / 60)} minute(s).`,
+            retryAfter,
+            fallback: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       throw new Error(`Paatch transcription failed [${paatchResponse.status}]: ${errText}`);
     }
 
