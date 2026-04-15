@@ -1,5 +1,5 @@
 import { CSSProperties } from "react";
-import mascotImg from "@/assets/mascot-tangerine.png";
+import mascotImg from "@/assets/mascot-zapzing.png";
 
 interface TangerineProps {
   size?: number;
