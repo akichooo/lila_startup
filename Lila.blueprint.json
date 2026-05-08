@@ -1,0 +1,556 @@
+{
+    "name": "Lila",
+    "flow": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "version": 1,
+            "parameters": {
+                "hook": 2817662,
+                "maxResults": 10
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {
+                    "x": -2,
+                    "y": -5,
+                    "name": "Receive transcription from App"
+                },
+                "restore": {
+                    "parameters": {
+                        "hook": {
+                            "data": {
+                                "editable": "true"
+                            },
+                            "label": "Test Webhook"
+                        },
+                        "maxResults": {
+                            "collapsed": true
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "hook",
+                        "type": "hook:gateway-webhook",
+                        "label": "Webhook",
+                        "required": true
+                    },
+                    {
+                        "name": "maxResults",
+                        "type": "number",
+                        "label": "Maximum number of results"
+                    }
+                ],
+                "interface": [
+                    {
+                        "name": "value",
+                        "type": "buffer"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 17,
+            "module": "code:ExecuteCode",
+            "version": 1,
+            "parameters": {},
+            "filter": null,
+            "mapper": {
+                "input": [
+                    {
+                        "name": "turns",
+                        "value": "{{1.transcription.turns}}"
+                    },
+                    {
+                        "name": "duration",
+                        "value": "{{1.transcription.duration}}"
+                    },
+                    {
+                        "name": "facilitator",
+                        "value": "Mr. Rivera"
+                    }
+                ],
+                "language": "python",
+                "inputFormat": "editor",
+                "dependencies": [],
+                "codeEditorPython": "import re\nfrom dataclasses import dataclass\n\nUNKNOWN_SPEAKER = \"UNKNOWN\"\nTURN_GAP_THRESHOLD_SEC = 0.8\nLONG_PAUSE_THRESHOLD_SEC = 4.0\n\nSHORT_TURN_MAX_WORDS = 10\nMEDIUM_TURN_MIN_WORDS = 11\nMEDIUM_TURN_MAX_WORDS = 29\nLONG_TURN_MIN_WORDS = 30\n\nLOW_ENGAGEMENT_TALK_RATIO_PCT = 10.0\nLOW_ENGAGEMENT_MIN_TURNS = 2\nWITHDRAWN_WPM_THRESHOLD = 80.0\nWITHDRAWN_AVG_WORDS_PER_TURN_THRESHOLD = 15.0\nPRESSURED_WPM_THRESHOLD = 160.0\nHIGH_DYSFLUENCY_RATE_THRESHOLD = 0.05\nRUMINATION_SELF_REFERENCE_RATE_THRESHOLD = 0.15\nRUMINATION_ABSOLUTIST_RATE_THRESHOLD = 0.02\nFACILITATOR_DEPENDENT_RATIO_THRESHOLD = 0.8\n\nEPSILON = 1e-9\n\nDYSFLUENCY_SINGLE_TOKENS = {\"um\", \"uh\", \"like\"}\nDYSFLUENCY_MULTIWORD_PHRASES = (\n    (\"you\", \"know\"),\n    (\"i\", \"mean\"),\n    (\"sort\", \"of\"),\n    (\"kind\", \"of\"),\n)\n\nSELF_REFERENCE_TOKENS = {\"i\", \"me\", \"my\", \"myself\"}\nABSOLUTIST_TOKENS = {\n    \"never\",\n    \"always\",\n    \"everyone\",\n    \"nobody\",\n    \"everything\",\n    \"nothing\",\n    \"impossible\",\n    \"completely\",\n    \"totally\",\n    \"literally\",\n}\n\nNEGATION_TOKENS = {\n    \"no\",\n    \"not\",\n    \"never\",\n    \"none\",\n    \"nothing\",\n    \"nobody\",\n    \"neither\",\n    \"nor\",\n    \"dont\",\n    \"don't\",\n    \"cant\",\n    \"can't\",\n    \"wont\",\n    \"won't\",\n    \"didnt\",\n    \"didn't\",\n    \"isnt\",\n    \"isn't\",\n    \"arent\",\n    \"aren't\",\n    \"wasnt\",\n    \"wasn't\",\n    \"werent\",\n    \"weren't\",\n}\n\nEMOTIONAL_TOKENS = {\n    \"sad\",\n    \"happy\",\n    \"angry\",\n    \"anxious\",\n    \"afraid\",\n    \"scared\",\n    \"upset\",\n    \"stressed\",\n    \"worried\",\n    \"depressed\",\n    \"lonely\",\n    \"tired\",\n    \"hurt\",\n    \"frustrated\",\n    \"overwhelmed\",\n    \"calm\",\n    \"good\",\n    \"bad\",\n    \"well\",\n}\n\nPRESENT_TENSE_HINT_TOKENS = {\n    \"am\",\n    \"is\",\n    \"are\",\n    \"do\",\n    \"does\",\n    \"have\",\n    \"has\",\n    \"feel\",\n    \"feeling\",\n    \"think\",\n    \"know\",\n    \"like\",\n}\n\nPAST_TENSE_HINT_TOKENS = {\n    \"was\",\n    \"were\",\n    \"did\",\n    \"had\",\n    \"felt\",\n    \"thought\",\n    \"knew\",\n    \"liked\",\n}\n\nWORD_RE = re.compile(r\"[A-Za-z']+\")\n\n\n@dataclass\nclass Segment:\n    speaker: str\n    start: float\n    end: float\n    text: str\n\n\n@dataclass\nclass Turn:\n    speaker: str\n    start: float\n    end: float\n    text: str\n\n\ndef safe_div(num, den):\n    if den <= 0:\n        return 0.0\n    return num / den\n\n\ndef duration_minutes(seconds):\n    return seconds / 60.0\n\n\ndef count_words(text):\n    return len(WORD_RE.findall((text or \"\").lower()))\n\n\ndef tokenize_words(text):\n    return WORD_RE.findall((text or \"\").lower())\n\n\ndef count_multiword_phrases(tokens, phrase):\n    if not tokens or not phrase or len(phrase) > len(tokens):\n        return 0\n    count = 0\n    phrase_len = len(phrase)\n    for i in range(len(tokens) - phrase_len + 1):\n        if tuple(tokens[i:i + phrase_len]) == tuple(phrase):\n            count += 1\n    return count\n\n\ndef count_dysfluencies(tokens):\n    single_count = sum(1 for t in tokens if t in DYSFLUENCY_SINGLE_TOKENS)\n    phrase_count = sum(count_multiword_phrases(tokens, phrase) for phrase in DYSFLUENCY_MULTIWORD_PHRASES)\n    return single_count + phrase_count\n\n\ndef count_self_references(tokens):\n    return sum(1 for t in tokens if t in SELF_REFERENCE_TOKENS)\n\n\ndef count_absolutist_words(tokens):\n    return sum(1 for t in tokens if t in ABSOLUTIST_TOKENS)\n\n\ndef count_negations(tokens):\n    return sum(1 for t in tokens if t in NEGATION_TOKENS)\n\n\ndef count_emotional_words(tokens):\n    return sum(1 for t in tokens if t in EMOTIONAL_TOKENS)\n\n\ndef count_question_marks(text):\n    return (text or \"\").count(\"?\")\n\n\ndef estimate_tense_ratio(tokens):\n    present_count = 0\n    past_count = 0\n\n    for token in tokens:\n        if token in PRESENT_TENSE_HINT_TOKENS:\n            present_count += 1\n        if token in PAST_TENSE_HINT_TOKENS or token.endswith(\"ed\"):\n            past_count += 1\n\n    return safe_div(float(past_count), float(present_count))\n\n\ndef extract_raw_segments(payload):\n    turns = payload.get(\"turns\", [])\n    if not isinstance(turns, list):\n        return []\n    return turns\n\n\ndef collect_declared_speakers(raw_segments):\n    seen = set()\n    speakers = []\n\n    for item in raw_segments:\n        if not isinstance(item, dict):\n            continue\n        speaker = item.get(\"speaker\")\n        if isinstance(speaker, str):\n            s = speaker.strip()\n            if s and s != UNKNOWN_SPEAKER and s not in seen:\n                seen.add(s)\n                speakers.append(s)\n\n    return speakers\n\n\ndef clean_segments(raw_segments):\n    cleaned = []\n    last_known_speaker = None\n\n    for item in raw_segments:\n        if not isinstance(item, dict):\n            continue\n\n        try:\n            start = float(item.get(\"start\", 0))\n            end = float(item.get(\"end\", 0))\n        except (TypeError, ValueError):\n            continue\n\n        text_raw = item.get(\"text\", \"\")\n        speaker_raw = item.get(\"speaker\", \"\")\n\n        if not isinstance(text_raw, str) or not isinstance(speaker_raw, str):\n            continue\n\n        speaker = speaker_raw.strip()\n        text = text_raw.strip()\n\n        if end <= start:\n            continue\n\n        if speaker != UNKNOWN_SPEAKER and speaker:\n            last_known_speaker = speaker\n        elif speaker == UNKNOWN_SPEAKER:\n            if last_known_speaker is None:\n                continue\n            speaker = last_known_speaker\n        else:\n            continue\n\n        cleaned.append(Segment(speaker=speaker, start=start, end=end, text=text))\n\n    cleaned.sort(key=lambda s: (s.start, s.end))\n    return cleaned\n\n\ndef build_turns(segments, gap_threshold_sec=TURN_GAP_THRESHOLD_SEC):\n    if not segments:\n        return []\n\n    turns = []\n    current = Turn(\n        speaker=segments[0].speaker,\n        start=segments[0].start,\n        end=segments[0].end,\n        text=segments[0].text.strip(),\n    )\n\n    for seg in segments[1:]:\n        same_speaker = seg.speaker == current.speaker\n        gap = seg.start - current.end\n\n        if same_speaker and gap <= gap_threshold_sec:\n            current.end = max(current.end, seg.end)\n            if seg.text:\n                current.text = (current.text + \" \" + seg.text).strip()\n        else:\n            turns.append(current)\n            current = Turn(\n                speaker=seg.speaker,\n                start=seg.start,\n                end=seg.end,\n                text=seg.text.strip(),\n            )\n\n    turns.append(current)\n    turns.sort(key=lambda t: (t.start, t.end))\n    return turns\n\n\ndef session_bounds(turns):\n    if not turns:\n        return 0.0, 0.0\n    return turns[0].start, max(t.end for t in turns)\n\n\ndef participation_arc_for_speaker(speaker_turns, session_start, session_end):\n    arc = {\"early\": 0, \"mid\": 0, \"late\": 0}\n    total_duration = session_end - session_start\n\n    if total_duration <= 0:\n        if speaker_turns:\n            arc[\"early\"] = len(speaker_turns)\n        return arc\n\n    one_third = total_duration / 3.0\n    early_end = session_start + one_third\n    mid_end = session_start + 2.0 * one_third\n\n    for turn in speaker_turns:\n        x = turn.start\n        if x < early_end:\n            arc[\"early\"] += 1\n        elif x < mid_end:\n            arc[\"mid\"] += 1\n        else:\n            arc[\"late\"] += 1\n\n    return arc\n\n\ndef compute_global_turn_features(turns):\n    features = {}\n\n    for i, turn in enumerate(turns):\n        duration_sec = max(0.0, turn.end - turn.start)\n        tokens = tokenize_words(turn.text)\n        word_count = float(len(tokens))\n\n        dys_count = float(count_dysfluencies(tokens))\n        self_ref_count = float(count_self_references(tokens))\n        abs_count = float(count_absolutist_words(tokens))\n\n        wpm = safe_div(word_count, duration_minutes(duration_sec))\n\n        silence_after = 0.0\n        if i + 1 < len(turns):\n            silence_after = max(0.0, turns[i + 1].start - turn.end)\n\n        prev_diff_speaker_gap = -1.0\n        if i > 0 and turns[i - 1].speaker != turn.speaker:\n            prev_diff_speaker_gap = max(0.0, turn.start - turns[i - 1].end)\n\n        features[i] = {\n            \"duration_sec\": duration_sec,\n            \"word_count\": word_count,\n            \"dys_count\": dys_count,\n            \"self_ref_count\": self_ref_count,\n            \"abs_count\": abs_count,\n            \"wpm\": wpm,\n            \"dys_rate\": safe_div(dys_count, word_count),\n            \"self_ref_rate\": safe_div(self_ref_count, word_count),\n            \"abs_rate\": safe_div(abs_count, word_count),\n            \"silence_after\": silence_after,\n            \"prev_diff_speaker_gap\": prev_diff_speaker_gap,\n        }\n\n    return features\n\n\ndef speaker_turn_indices(turns):\n    by_speaker = {}\n    for i, t in enumerate(turns):\n        by_speaker.setdefault(t.speaker, []).append(i)\n    return by_speaker\n\n\ndef compute_metrics_for_speaker(\n    speaker,\n    turns,\n    turn_indices,\n    features,\n    session_start,\n    session_end,\n    total_session_talk_time_sec,\n):\n    s_turns = [turns[i] for i in turn_indices]\n\n    turn_count = len(s_turns)\n    total_talk_time = sum(features[i][\"duration_sec\"] for i in turn_indices)\n    total_words = sum(features[i][\"word_count\"] for i in turn_indices)\n\n    session_duration_sec = max(0.0, session_end - session_start)\n\n    engagement = {\n        \"turn_count\": turn_count,\n        \"total_talk_time_sec\": round(total_talk_time, 3),\n        \"talk_ratio_pct\": round(100.0 * safe_div(total_talk_time, total_session_talk_time_sec), 3),\n        \"total_word_count\": int(total_words),\n        \"avg_turn_duration_sec\": round(safe_div(total_talk_time, turn_count), 3),\n        \"avg_words_per_turn\": round(safe_div(total_words, turn_count), 3),\n        \"turns_per_minute\": round(safe_div(turn_count, duration_minutes(session_duration_sec)), 3),\n    }\n\n    short_turn_count = 0\n    medium_turn_count = 0\n    long_turn_count = 0\n\n    dysfluency_count = 0.0\n    self_reference_count = 0.0\n    absolutist_count = 0.0\n\n    for i in turn_indices:\n        wc = features[i][\"word_count\"]\n        if wc <= SHORT_TURN_MAX_WORDS:\n            short_turn_count += 1\n        elif MEDIUM_TURN_MIN_WORDS <= wc <= MEDIUM_TURN_MAX_WORDS:\n            medium_turn_count += 1\n        elif wc >= LONG_TURN_MIN_WORDS:\n            long_turn_count += 1\n\n        dysfluency_count += features[i][\"dys_count\"]\n        self_reference_count += features[i][\"self_ref_count\"]\n        absolutist_count += features[i][\"abs_count\"]\n\n    speech_pattern = {\n        \"wpm\": round(safe_div(total_words, duration_minutes(total_talk_time)), 3),\n        \"short_turn_count\": short_turn_count,\n        \"medium_turn_count\": medium_turn_count,\n        \"long_turn_count\": long_turn_count,\n        \"dysfluency_count\": int(dysfluency_count),\n        \"dysfluency_rate\": round(safe_div(dysfluency_count, total_words), 6),\n        \"self_reference_count\": int(self_reference_count),\n        \"self_reference_rate\": round(safe_div(self_reference_count, total_words), 6),\n        \"absolutist_word_count\": int(absolutist_count),\n        \"absolutist_rate\": round(safe_div(absolutist_count, total_words), 6),\n    }\n\n    first_turn_time = s_turns[0].start if s_turns else 0.0\n    last_turn_time = s_turns[-1].start if s_turns else 0.0\n\n    long_pause_count = 0\n    max_silence_after = 0.0\n    for i in turn_indices:\n        silence_after = features[i][\"silence_after\"]\n        if silence_after > LONG_PAUSE_THRESHOLD_SEC:\n            long_pause_count += 1\n            max_silence_after = max(max_silence_after, silence_after)\n\n    arc = participation_arc_for_speaker(s_turns, session_start, session_end)\n\n    response_latencies = [\n        features[i][\"prev_diff_speaker_gap\"]\n        for i in turn_indices\n        if features[i][\"prev_diff_speaker_gap\"] >= 0.0\n    ]\n\n    temporal = {\n        \"first_turn_time_sec\": round(first_turn_time, 3),\n        \"last_turn_time_sec\": round(last_turn_time, 3),\n        \"long_pause_count\": long_pause_count,\n        \"max_silence_after_turn_sec\": round(max_silence_after, 3),\n        \"participation_arc\": arc,\n        \"avg_response_latency_sec\": round(\n            safe_div(sum(response_latencies), float(len(response_latencies))), 3\n        ),\n    }\n\n    return {\n        \"engagement\": engagement,\n        \"speech_pattern\": speech_pattern,\n        \"temporal\": temporal,\n    }\n\n\ndef compute_flags_for_speaker(\n    speaker,\n    metrics,\n    speaker_indices,\n    turns,\n    facilitator,\n):\n    engagement = metrics[\"engagement\"]\n    speech = metrics[\"speech_pattern\"]\n    temporal = metrics[\"temporal\"]\n\n    talk_ratio_pct = float(engagement[\"talk_ratio_pct\"])\n    turn_count = int(engagement[\"turn_count\"])\n    wpm = float(speech[\"wpm\"])\n    avg_words_per_turn = float(engagement[\"avg_words_per_turn\"])\n    dys_rate = float(speech[\"dysfluency_rate\"])\n    self_rate = float(speech[\"self_reference_rate\"])\n    abs_rate = float(speech[\"absolutist_rate\"])\n\n    flag_low_engagement = (\n        talk_ratio_pct < LOW_ENGAGEMENT_TALK_RATIO_PCT or turn_count < LOW_ENGAGEMENT_MIN_TURNS\n    )\n    flag_withdrawn = wpm < WITHDRAWN_WPM_THRESHOLD and avg_words_per_turn < WITHDRAWN_AVG_WORDS_PER_TURN_THRESHOLD\n    flag_pressured = wpm > PRESSURED_WPM_THRESHOLD\n    flag_high_dysfluency = dys_rate > HIGH_DYSFLUENCY_RATE_THRESHOLD\n    flag_rumination = (\n        self_rate > RUMINATION_SELF_REFERENCE_RATE_THRESHOLD\n        and abs_rate > RUMINATION_ABSOLUTIST_RATE_THRESHOLD\n    )\n    flag_disengaged_late = (\n        int(temporal[\"participation_arc\"][\"late\"]) == 0\n        and int(temporal[\"participation_arc\"][\"early\"]) > 0\n    )\n\n    responses_to_facilitator = 0\n    for i in speaker_indices:\n        if i > 0 and turns[i - 1].speaker == facilitator:\n            responses_to_facilitator += 1\n\n    response_ratio = safe_div(float(responses_to_facilitator), float(turn_count))\n    flag_facilitator_dependent = turn_count > 0 and response_ratio >= FACILITATOR_DEPENDENT_RATIO_THRESHOLD\n\n    return {\n        \"flag_low_engagement\": bool(flag_low_engagement),\n        \"flag_withdrawn\": bool(flag_withdrawn),\n        \"flag_pressured\": bool(flag_pressured),\n        \"flag_high_dysfluency\": bool(flag_high_dysfluency),\n        \"flag_rumination\": bool(flag_rumination),\n        \"flag_disengaged_late\": bool(flag_disengaged_late),\n        \"flag_facilitator_dependent\": bool(flag_facilitator_dependent),\n    }\n\n\ndef inline_flags_for_text(text):\n    flags = []\n    tokens = tokenize_words(text)\n\n    if count_negations(tokens) > 0:\n        flags.append(\"negation\")\n    if count_self_references(tokens) > 0:\n        flags.append(\"self_reference\")\n    if count_dysfluencies(tokens) > 0:\n        flags.append(\"dysfluency\")\n    if count_absolutist_words(tokens) > 0:\n        flags.append(\"absolutist\")\n    if count_emotional_words(tokens) > 0:\n        flags.append(\"emotional_language\")\n    if count_question_marks(text) > 0:\n        flags.append(\"question\")\n\n    return flags\n\n\ndef build_dialogue_for_speaker(speaker, turns):\n    dialogue = []\n    i = 0\n    turn_index = 1\n\n    while i < len(turns):\n        turn = turns[i]\n        if turn.speaker != speaker:\n            i += 1\n            continue\n\n        start_idx = i\n        end_idx = i\n        while end_idx + 1 < len(turns) and turns[end_idx + 1].speaker == speaker:\n            end_idx += 1\n\n        merged_text = \" \".join(\n            t.text.strip() for t in turns[start_idx:end_idx + 1] if t.text.strip()\n        ).strip()\n        merged_word_count = count_words(merged_text)\n\n        if end_idx > start_idx:\n            prompt_obj = None\n        else:\n            prev_idx = start_idx - 1\n            if prev_idx >= 0 and turns[prev_idx].speaker != speaker:\n                prompt_obj = {\n                    \"speaker\": turns[prev_idx].speaker,\n                    \"text\": turns[prev_idx].text,\n                }\n            else:\n                prompt_obj = None\n\n        dialogue.append(\n            {\n                \"turn_index\": turn_index,\n                \"prompt\": prompt_obj,\n                \"response\": {\n                    \"text\": merged_text,\n                    \"word_count\": merged_word_count,\n                },\n                \"inline_flags\": inline_flags_for_text(merged_text),\n            }\n        )\n\n        turn_index += 1\n        i = end_idx + 1\n\n    return dialogue\n\n\ndef compute_content_signals_for_speaker(speaker_turns):\n    if not speaker_turns:\n        return {\n            \"emotional_word_rate\": 0.0,\n            \"negation_rate\": 0.0,\n            \"question_rate\": 0.0,\n            \"tense_ratio\": 0.0,\n            \"vocabulary_diversity\": 0.0,\n        }\n\n    all_text = \" \".join(t.text for t in speaker_turns)\n    tokens = tokenize_words(all_text)\n    total_words = float(len(tokens))\n    unique_words = float(len(set(tokens)))\n\n    emotional_word_rate = safe_div(float(count_emotional_words(tokens)), total_words)\n    negation_rate = safe_div(float(count_negations(tokens)), total_words)\n    question_turns = sum(1 for t in speaker_turns if count_question_marks(t.text) > 0)\n    question_rate = safe_div(float(question_turns), float(len(speaker_turns)))\n    tense_ratio = estimate_tense_ratio(tokens)\n    vocabulary_diversity = safe_div(unique_words, total_words)\n\n    return {\n        \"emotional_word_rate\": round(emotional_word_rate, 6),\n        \"negation_rate\": round(negation_rate, 6),\n        \"question_rate\": round(question_rate, 6),\n        \"tense_ratio\": round(tense_ratio, 6),\n        \"vocabulary_diversity\": round(vocabulary_diversity, 6),\n    }\n\n\ndef slim_metrics_for_output(full_metrics):\n    engagement = full_metrics[\"engagement\"]\n    speech = full_metrics[\"speech_pattern\"]\n    temporal = full_metrics[\"temporal\"]\n\n    arc = temporal.get(\"participation_arc\", {\"early\": 0, \"mid\": 0, \"late\": 0})\n    early = float(arc.get(\"early\", 0))\n    late = float(arc.get(\"late\", 0))\n    participation_drop = safe_div(max(0.0, early - late), early) if early > 0 else 0.0\n\n    return {\n        \"engagement\": {\n            \"turn_count\": int(engagement[\"turn_count\"]),\n            \"talk_ratio_pct\": float(engagement[\"talk_ratio_pct\"]),\n            \"avg_words_per_turn\": float(engagement[\"avg_words_per_turn\"]),\n            \"total_talk_time_sec\": float(engagement[\"total_talk_time_sec\"]),\n        },\n        \"speech_pattern\": {\n            \"wpm\": float(speech[\"wpm\"]),\n            \"dysfluency_rate\": float(speech[\"dysfluency_rate\"]),\n            \"self_reference_rate\": float(speech[\"self_reference_rate\"]),\n            \"absolutist_rate\": float(speech[\"absolutist_rate\"]),\n        },\n        \"temporal\": {\n            \"long_pause_count\": int(temporal[\"long_pause_count\"]),\n            \"avg_response_latency_sec\": float(temporal[\"avg_response_latency_sec\"]),\n            \"participation_drop\": round(participation_drop, 6),\n        },\n        \"content_signals\": {\n            \"emotional_word_rate\": 0.0,\n            \"negation_rate\": 0.0,\n            \"question_rate\": 0.0,\n            \"tense_ratio\": 0.0,\n            \"vocabulary_diversity\": 0.0,\n        },\n    }\n\n\ndef local_key_reasons_for_turn(feature):\n    reasons = []\n    wc = int(feature[\"word_count\"])\n\n    if wc <= SHORT_TURN_MAX_WORDS and wc > 0:\n        reasons.append(\"very_short_turn\")\n\n    if feature[\"dys_rate\"] > HIGH_DYSFLUENCY_RATE_THRESHOLD:\n        reasons.append(\"high_dysfluency\")\n\n    if feature[\"wpm\"] > PRESSURED_WPM_THRESHOLD:\n        reasons.append(\"pressured_speech\")\n\n    if (\n        feature[\"self_ref_rate\"] > RUMINATION_SELF_REFERENCE_RATE_THRESHOLD\n        and feature[\"abs_rate\"] > RUMINATION_ABSOLUTIST_RATE_THRESHOLD\n    ):\n        reasons.append(\"rumination_language\")\n\n    return reasons\n\n\ndef select_key_turns(speaker, turns, speaker_indices, features):\n    if not speaker_indices:\n        return []\n\n    selected = {}\n\n    sorted_by_wc = sorted(\n        speaker_indices,\n        key=lambda idx: (features[idx][\"word_count\"], turns[idx].end - turns[idx].start),\n        reverse=True,\n    )\n\n    for idx in sorted_by_wc[:3]:\n        if features[idx][\"word_count\"] > 0:\n            selected.setdefault(idx, []).append(\"longest_turn\")\n\n    for idx in speaker_indices:\n        reasons = local_key_reasons_for_turn(features[idx])\n        if reasons:\n            selected.setdefault(idx, []).extend(reasons)\n\n    key_turns = []\n    for idx in sorted(selected.keys(), key=lambda i: turns[i].start):\n        turn = turns[idx]\n        reason_values = selected[idx]\n        unique_reasons = []\n        seen = set()\n        for r in reason_values:\n            if r not in seen:\n                seen.add(r)\n                unique_reasons.append(r)\n\n        key_turns.append(\n            {\n                \"start\": round(turn.start, 3),\n                \"end\": round(turn.end, 3),\n                \"text\": turn.text,\n                \"word_count\": int(features[idx][\"word_count\"]),\n                \"reason\": \",\".join(unique_reasons),\n            }\n        )\n\n    return key_turns\n\n\ndef zero_metrics():\n    return {\n        \"engagement\": {\n            \"turn_count\": 0,\n            \"total_talk_time_sec\": 0.0,\n            \"talk_ratio_pct\": 0.0,\n            \"total_word_count\": 0,\n            \"avg_turn_duration_sec\": 0.0,\n            \"avg_words_per_turn\": 0.0,\n            \"turns_per_minute\": 0.0,\n        },\n        \"speech_pattern\": {\n            \"wpm\": 0.0,\n            \"short_turn_count\": 0,\n            \"medium_turn_count\": 0,\n            \"long_turn_count\": 0,\n            \"dysfluency_count\": 0,\n            \"dysfluency_rate\": 0.0,\n            \"self_reference_count\": 0,\n            \"self_reference_rate\": 0.0,\n            \"absolutist_word_count\": 0,\n            \"absolutist_rate\": 0.0,\n        },\n        \"temporal\": {\n            \"first_turn_time_sec\": 0.0,\n            \"last_turn_time_sec\": 0.0,\n            \"long_pause_count\": 0,\n            \"max_silence_after_turn_sec\": 0.0,\n            \"participation_arc\": {\"early\": 0, \"mid\": 0, \"late\": 0},\n            \"avg_response_latency_sec\": 0.0,\n        },\n    }\n\n\ndef false_flags():\n    return {\n        \"flag_low_engagement\": False,\n        \"flag_withdrawn\": False,\n        \"flag_pressured\": False,\n        \"flag_high_dysfluency\": False,\n        \"flag_rumination\": False,\n        \"flag_disengaged_late\": False,\n        \"flag_facilitator_dependent\": False,\n    }\n\n\ndef build_speaker_outputs(turns, facilitator, all_speakers):\n    if not all_speakers:\n        return []\n\n    features = compute_global_turn_features(turns)\n    by_speaker = speaker_turn_indices(turns)\n    session_start, session_end = session_bounds(turns)\n    total_session_talk_time_sec = sum(f[\"duration_sec\"] for f in features.values())\n\n    speakers_sorted = sorted(set(all_speakers))\n    results = []\n\n    for speaker in speakers_sorted:\n        idxs = by_speaker.get(speaker, [])\n        s_turns = [turns[i] for i in idxs]\n\n        if idxs:\n            full_metrics = compute_metrics_for_speaker(\n                speaker=speaker,\n                turns=turns,\n                turn_indices=idxs,\n                features=features,\n                session_start=session_start,\n                session_end=session_end,\n                total_session_talk_time_sec=total_session_talk_time_sec,\n            )\n        else:\n            full_metrics = zero_metrics()\n\n        total_talk_time = float(full_metrics[\"engagement\"][\"total_talk_time_sec\"])\n        if total_talk_time <= 0.0 + EPSILON:\n            full_metrics = zero_metrics()\n            flags = false_flags()\n        else:\n            flags = compute_flags_for_speaker(\n                speaker=speaker,\n                metrics=full_metrics,\n                speaker_indices=idxs,\n                turns=turns,\n                facilitator=facilitator,\n            )\n\n        metrics = slim_metrics_for_output(full_metrics)\n        metrics[\"content_signals\"] = compute_content_signals_for_speaker(s_turns)\n\n        results.append(\n            {\n                \"speaker_id\": speaker,\n                \"total_duration_sec\": round(total_talk_time, 3),\n                \"metrics\": metrics,\n                \"flags\": flags,\n                \"dialogue\": build_dialogue_for_speaker(speaker, turns),\n                \"key_turns\": select_key_turns(speaker, turns, idxs, features),\n            }\n        )\n\n    return results\n\n\ndef build_transcript(cleaned_segments):\n    return [\n        {\n            \"speaker\": seg.speaker,\n            \"text\": seg.text,\n            \"start\": round(seg.start, 3),\n            \"end\": round(seg.end, 3),\n        }\n        for seg in cleaned_segments\n    ]\n\n\n# -----------------------------\n# Make entry point\n# -----------------------------\npayload = input if isinstance(input, dict) else {}\nfacilitator = payload.get(\"facilitator\", \"SPEAKER_AI\")\n\nraw_segments = extract_raw_segments(payload)\ndeclared_speakers = collect_declared_speakers(raw_segments)\ncleaned_segments = clean_segments(raw_segments)\n\nif not cleaned_segments:\n    return {\n        \"students\": [],\n        \"transcript\": [],\n        \"speaker_durations\": {},\n        \"error\": \"No valid turns found in input['turns']\"\n    }\n\nturns = build_turns(cleaned_segments, gap_threshold_sec=TURN_GAP_THRESHOLD_SEC)\nresolved_speakers = sorted({t.speaker for t in turns})\nall_speakers = sorted(set(declared_speakers) | set(resolved_speakers))\n\nstudents = build_speaker_outputs(\n    turns=turns,\n    facilitator=facilitator,\n    all_speakers=all_speakers,\n)\n\nspeaker_durations = {\n    speaker: round(\n        sum((t.end - t.start) for t in turns if t.speaker == speaker),\n        3\n    )\n    for speaker in all_speakers\n}\n\ntranscript = build_transcript(cleaned_segments)\n\nreturn {\n    \"students\": students,\n    \"transcript\": transcript,\n    \"speaker_durations\": speaker_durations,\n    \"session_duration_sec\": round(float(payload.get(\"duration\", 0) or 0), 3),\n    \"turn_count_input\": len(raw_segments),\n    \"turn_count_processed\": len(turns),\n}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 387,
+                    "y": 167,
+                    "name": "Computation"
+                },
+                "restore": {
+                    "expect": {
+                        "input": {
+                            "items": [
+                                null,
+                                null,
+                                null
+                            ]
+                        },
+                        "language": {
+                            "mode": "chose",
+                            "label": "Python"
+                        },
+                        "inputFormat": {
+                            "label": "Code editor"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "language",
+                        "type": "select",
+                        "label": "Language",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "javascript",
+                                "python"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "input",
+                        "spec": {
+                            "name": "value",
+                            "spec": [
+                                {
+                                    "name": "name",
+                                    "type": "text",
+                                    "label": "Name",
+                                    "required": true,
+                                    "validate": {
+                                        "max": 32,
+                                        "min": 1,
+                                        "pattern": "^[a-zA-Z0-9_]{1,32}$"
+                                    }
+                                },
+                                {
+                                    "name": "value",
+                                    "type": "any",
+                                    "label": "Value"
+                                }
+                            ],
+                            "type": "collection",
+                            "label": "Variable"
+                        },
+                        "type": "array",
+                        "label": "Input"
+                    },
+                    {
+                        "name": "dependencies",
+                        "spec": {
+                            "name": "value",
+                            "type": "text",
+                            "label": "Dependency",
+                            "required": true,
+                            "validate": {
+                                "max": 214,
+                                "min": 1,
+                                "pattern": "^[A-Za-z0-9_@\\./<>=!~\\^+-]{1,214}$"
+                            }
+                        },
+                        "type": "array",
+                        "label": "Additional dependencies (Enterprise plans only)"
+                    },
+                    {
+                        "name": "inputFormat",
+                        "type": "select",
+                        "label": "Input format",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "editor",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "codeEditorPython",
+                        "type": "editor",
+                        "label": "Code",
+                        "required": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 24,
+            "module": "code:ExecuteCode",
+            "version": 1,
+            "parameters": {},
+            "filter": null,
+            "mapper": {
+                "input": [
+                    {
+                        "name": "students",
+                        "value": "{{17.result.students}}"
+                    },
+                    {
+                        "name": "speaker_durations",
+                        "value": "{{17.result.speaker_durations}}"
+                    }
+                ],
+                "language": "python",
+                "inputFormat": "editor",
+                "dependencies": [],
+                "codeEditorPython": "# Make Python block\n# Expects the full computations JSON directly as input\n\npayload = input if isinstance(input, dict) else {}\n\nstudents = payload.get(\"students\", []) or []\nspeaker_durations = payload.get(\"speaker_durations\", {}) or {}\n\ndef to_num(v, default=0):\n    try:\n        return float(v)\n    except (TypeError, ValueError):\n        return default\n\ndef to_bool(v):\n    return bool(v)\n\n# Per speaker rows for charts\nspeakers_overview = []\nspeech_patterns = []\ncontent_signals = []\nrisk_flags = []\n\nfor student in students:\n    speaker_id = student.get(\"speaker_id\", \"UNKNOWN\")\n    metrics = student.get(\"metrics\", {}) or {}\n    flags = student.get(\"flags\", {}) or {}\n\n    engagement = metrics.get(\"engagement\", {}) or {}\n    speech = metrics.get(\"speech_pattern\", {}) or {}\n    temporal = metrics.get(\"temporal\", {}) or {}\n    content = metrics.get(\"content_signals\", {}) or {}\n\n    total_duration_sec = to_num(\n        student.get(\"total_duration_sec\", engagement.get(\"total_talk_time_sec\", speaker_durations.get(speaker_id, 0)))\n    )\n\n    speakers_overview.append({\n        \"speaker_id\": speaker_id,\n        \"total_duration_sec\": round(total_duration_sec, 3),\n        \"talk_ratio_pct\": round(to_num(engagement.get(\"talk_ratio_pct\")), 3),\n        \"turn_count\": int(to_num(engagement.get(\"turn_count\"))),\n        \"avg_words_per_turn\": round(to_num(engagement.get(\"avg_words_per_turn\")), 3),\n        \"wpm\": round(to_num(speech.get(\"wpm\")), 3),\n        \"long_pause_count\": int(to_num(temporal.get(\"long_pause_count\"))),\n        \"avg_response_latency_sec\": round(to_num(temporal.get(\"avg_response_latency_sec\")), 3),\n        \"participation_drop\": round(to_num(temporal.get(\"participation_drop\")), 6),\n    })\n\n    speech_patterns.append({\n        \"speaker_id\": speaker_id,\n        \"dysfluency_rate\": round(to_num(speech.get(\"dysfluency_rate\")), 6),\n        \"self_reference_rate\": round(to_num(speech.get(\"self_reference_rate\")), 6),\n        \"absolutist_rate\": round(to_num(speech.get(\"absolutist_rate\")), 6),\n    })\n\n    content_signals.append({\n        \"speaker_id\": speaker_id,\n        \"emotional_word_rate\": round(to_num(content.get(\"emotional_word_rate\")), 6),\n        \"negation_rate\": round(to_num(content.get(\"negation_rate\")), 6),\n        \"question_rate\": round(to_num(content.get(\"question_rate\")), 6),\n        \"tense_ratio\": round(to_num(content.get(\"tense_ratio\")), 6),\n        \"vocabulary_diversity\": round(to_num(content.get(\"vocabulary_diversity\")), 6),\n    })\n\n    risk_flags.append({\n        \"speaker_id\": speaker_id,\n        \"flag_low_engagement\": to_bool(flags.get(\"flag_low_engagement\")),\n        \"flag_withdrawn\": to_bool(flags.get(\"flag_withdrawn\")),\n        \"flag_pressured\": to_bool(flags.get(\"flag_pressured\")),\n        \"flag_high_dysfluency\": to_bool(flags.get(\"flag_high_dysfluency\")),\n        \"flag_rumination\": to_bool(flags.get(\"flag_rumination\")),\n        \"flag_disengaged_late\": to_bool(flags.get(\"flag_disengaged_late\")),\n        \"flag_facilitator_dependent\": to_bool(flags.get(\"flag_facilitator_dependent\")),\n    })\n\nspeaker_count = len(speakers_overview)\nactive_speakers = sum(1 for s in speakers_overview if s[\"total_duration_sec\"] > 0)\n\ntotal_measured_speaking_sec = round(sum(s[\"total_duration_sec\"] for s in speakers_overview), 3)\nsession_duration_sec = round(to_num(payload.get(\"session_duration_sec\")), 3)\n\nmost_talkative = None\nleast_talkative = None\nfastest_speaker = None\nhighest_participation_drop = None\n\nif speakers_overview:\n    most_talkative = max(speakers_overview, key=lambda x: x[\"total_duration_sec\"])[\"speaker_id\"]\n    least_talkative = min(speakers_overview, key=lambda x: x[\"total_duration_sec\"])[\"speaker_id\"]\n    fastest_speaker = max(speakers_overview, key=lambda x: x[\"wpm\"])[\"speaker_id\"]\n    highest_participation_drop = max(speakers_overview, key=lambda x: x[\"participation_drop\"])[\"speaker_id\"]\n\nflag_counts = {\n    \"flag_low_engagement\": sum(1 for r in risk_flags if r[\"flag_low_engagement\"]),\n    \"flag_withdrawn\": sum(1 for r in risk_flags if r[\"flag_withdrawn\"]),\n    \"flag_pressured\": sum(1 for r in risk_flags if r[\"flag_pressured\"]),\n    \"flag_high_dysfluency\": sum(1 for r in risk_flags if r[\"flag_high_dysfluency\"]),\n    \"flag_rumination\": sum(1 for r in risk_flags if r[\"flag_rumination\"]),\n    \"flag_disengaged_late\": sum(1 for r in risk_flags if r[\"flag_disengaged_late\"]),\n    \"flag_facilitator_dependent\": sum(1 for r in risk_flags if r[\"flag_facilitator_dependent\"]),\n}\n\ngraphs = [\n    {\n        \"id\": \"speaking_time_by_speaker\",\n        \"title\": \"Speaking Time by Speaker\",\n        \"type\": \"bar\",\n        \"data_key\": \"speakers_overview\",\n        \"x\": \"speaker_id\",\n        \"y\": \"total_duration_sec\",\n        \"y_label\": \"Seconds\"\n    },\n    {\n        \"id\": \"talk_ratio_by_speaker\",\n        \"title\": \"Talk Ratio by Speaker\",\n        \"type\": \"bar\",\n        \"data_key\": \"speakers_overview\",\n        \"x\": \"speaker_id\",\n        \"y\": \"talk_ratio_pct\",\n        \"y_label\": \"Percent\"\n    },\n    {\n        \"id\": \"turn_count_by_speaker\",\n        \"title\": \"Turn Count by Speaker\",\n        \"type\": \"bar\",\n        \"data_key\": \"speakers_overview\",\n        \"x\": \"speaker_id\",\n        \"y\": \"turn_count\",\n        \"y_label\": \"Turns\"\n    },\n    {\n        \"id\": \"wpm_by_speaker\",\n        \"title\": \"Speaking Speed by Speaker\",\n        \"type\": \"bar\",\n        \"data_key\": \"speakers_overview\",\n        \"x\": \"speaker_id\",\n        \"y\": \"wpm\",\n        \"y_label\": \"Words per Minute\"\n    },\n    {\n        \"id\": \"behavioral_rates_by_speaker\",\n        \"title\": \"Behavioral Rates by Speaker\",\n        \"type\": \"grouped_bar\",\n        \"data_key\": \"speech_patterns\",\n        \"x\": \"speaker_id\",\n        \"series\": [\"dysfluency_rate\", \"self_reference_rate\", \"absolutist_rate\"]\n    },\n    {\n        \"id\": \"content_signals_by_speaker\",\n        \"title\": \"Content Signals by Speaker\",\n        \"type\": \"grouped_bar\",\n        \"data_key\": \"content_signals\",\n        \"x\": \"speaker_id\",\n        \"series\": [\n            \"emotional_word_rate\",\n            \"negation_rate\",\n            \"question_rate\",\n            \"tense_ratio\",\n            \"vocabulary_diversity\"\n        ]\n    },\n    {\n        \"id\": \"participation_drop_by_speaker\",\n        \"title\": \"Participation Drop by Speaker\",\n        \"type\": \"bar\",\n        \"data_key\": \"speakers_overview\",\n        \"x\": \"speaker_id\",\n        \"y\": \"participation_drop\",\n        \"y_label\": \"Drop Ratio\"\n    },\n    {\n        \"id\": \"risk_flags_heatmap\",\n        \"title\": \"Risk Flags by Speaker\",\n        \"type\": \"heatmap\",\n        \"data_key\": \"risk_flags\",\n        \"x\": \"speaker_id\",\n        \"series\": [\n            \"flag_low_engagement\",\n            \"flag_withdrawn\",\n            \"flag_pressured\",\n            \"flag_high_dysfluency\",\n            \"flag_rumination\",\n            \"flag_disengaged_late\",\n            \"flag_facilitator_dependent\"\n        ]\n    }\n]\n\nreturn {\n    \"session_summary\": {\n        \"session_duration_sec\": session_duration_sec,\n        \"total_measured_speaking_sec\": total_measured_speaking_sec,\n        \"speaker_count\": speaker_count,\n        \"active_speakers\": active_speakers,\n        \"turn_count_input\": int(to_num(payload.get(\"turn_count_input\"))),\n        \"turn_count_processed\": int(to_num(payload.get(\"turn_count_processed\"))),\n        \"most_talkative_speaker\": most_talkative,\n        \"least_talkative_speaker\": least_talkative,\n        \"fastest_speaker\": fastest_speaker,\n        \"highest_participation_drop_speaker\": highest_participation_drop,\n        \"flag_counts\": flag_counts\n    },\n    \"chart_data\": {\n        \"speakers_overview\": speakers_overview,\n        \"speech_patterns\": speech_patterns,\n        \"content_signals\": content_signals,\n        \"risk_flags\": risk_flags\n    },\n    \"graphs\": graphs\n}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 387,
+                    "y": 580,
+                    "name": "Graph computation"
+                },
+                "restore": {
+                    "expect": {
+                        "input": {
+                            "items": [
+                                null,
+                                null
+                            ]
+                        },
+                        "language": {
+                            "mode": "chose",
+                            "label": "Python"
+                        },
+                        "inputFormat": {
+                            "label": "Code editor"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "language",
+                        "type": "select",
+                        "label": "Language",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "javascript",
+                                "python"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "input",
+                        "spec": {
+                            "name": "value",
+                            "spec": [
+                                {
+                                    "name": "name",
+                                    "type": "text",
+                                    "label": "Name",
+                                    "required": true,
+                                    "validate": {
+                                        "max": 32,
+                                        "min": 1,
+                                        "pattern": "^[a-zA-Z0-9_]{1,32}$"
+                                    }
+                                },
+                                {
+                                    "name": "value",
+                                    "type": "any",
+                                    "label": "Value"
+                                }
+                            ],
+                            "type": "collection",
+                            "label": "Variable"
+                        },
+                        "type": "array",
+                        "label": "Input"
+                    },
+                    {
+                        "name": "dependencies",
+                        "spec": {
+                            "name": "value",
+                            "type": "text",
+                            "label": "Dependency",
+                            "required": true,
+                            "validate": {
+                                "max": 214,
+                                "min": 1,
+                                "pattern": "^[A-Za-z0-9_@\\./<>=!~\\^+-]{1,214}$"
+                            }
+                        },
+                        "type": "array",
+                        "label": "Additional dependencies (Enterprise plans only)"
+                    },
+                    {
+                        "name": "inputFormat",
+                        "type": "select",
+                        "label": "Input format",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "editor",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "codeEditorPython",
+                        "type": "editor",
+                        "label": "Code",
+                        "required": true
+                    }
+                ]
+            }
+        },
+        {
+            "id": 20,
+            "module": "ai-local-agent:RunLocalAIAgent",
+            "version": 0,
+            "parameters": {
+                "makeConnectionId": 6584850
+            },
+            "mapper": {
+                "files": [],
+                "message": "{\"full\":{{17.result}},\n\"important numbers\":{{24.result}}}",
+                "timeout": "",
+                "threadId": "",
+                "outputType": "text",
+                "modelConfig": {
+                    "recursionLimit": 300,
+                    "iterationsFromHistoryCount": "10"
+                },
+                "defaultModel": "small",
+                "systemPrompt": "You are a child wellbeing observation assistant helping teachers identify early signs of emotional, social, or psychological concerns in students. You are NOT a therapist or diagnostician. Your role is to translate conversation metrics and transcripts into clear, structured, teacher-friendly observations that support early intervention.\r\n\r\nYou will receive a JSON object containing:\r\n- A list of students with behavioral and speech metrics\r\n- Flags for specific risk patterns\r\n- The raw conversation transcript\r\n\r\nIMPORTANT INPUT HANDLING:\r\n- Before writing the report, read the full transcript carefully.\r\n- Identify the real name each speaker uses for themselves or is called by others during the conversation.\r\n- Use those real names throughout the report, not the speaker_id values from the JSON (e.g. if speaker_id is \"Student_1\" but the transcript shows others calling them \"Maya\", use \"Maya\").\r\n- If no real name can be found for a speaker, fall back to their speaker_id.\r\n\r\nSTRICT RULES:\r\n- Use warm, professional, non-alarmist language. You are flagging patterns, not diagnosing.\r\n- Always highlight positives alongside concerns.\r\n- Never use clinical or diagnostic language (e.g. avoid \"depression\", \"disorder\"). Use observational language (e.g. \"may benefit from additional support\", \"showed signs of emotional weight\").\r\n- Ground every observation in specific evidence from the transcript or metrics.\r\n- If the session is short or data is limited, note that briefly.\r\n- Flag anything that may warrant a private follow-up.\r\n- Never use the word \"facilitator\" — always refer to speakers by their real name.\r\n\r\nFORMATTING RULES:\r\n- All section titles must be written as plain title text with no ## markdown headers. Use a divider line (---) to separate sections instead.\r\n- Do not print any instructions, template notes, or conditional logic in the output.\n\n\nIf all flags are false for all students, write this exact line instead of the table:\r\nNo significant flags raised in this session. If any flags are true in the JSON, produce the table of flags summary that you can see in the output format.\r\n\r\nOUTPUT FORMAT — follow this exactly:\r\n\r\n\r\nSession Wellbeing Report\r\nDate: [today's date]\r\nSession participants: [comma-separated list of real student names]\r\nNote: This is an observational tool, not a clinical assessment.\r\n\r\n\r\nSession overview\r\n2–3 sentences on the general tone and dynamics of the conversation. Reference students by their real names.\r\n\r\n\r\nIndividual student profiles\r\n\r\nRepeat this block for each student:\r\n\r\n[Student real name]\r\n\r\nOverall impression: One sentence capturing the key takeaway for this student in this session.\r\n\r\nStrengths observed:\r\n- [Specific positive signal with brief explanation]\r\n- [Another if applicable]\r\n\r\nAreas to monitor:\r\n- [Pattern worth watching, with the metric or transcript moment that supports it]\r\n- [Another if applicable]\r\n\r\nNotable transcript moments:\r\n- \"[short quote or paraphrase]\" — [one sentence on why this stands out]\r\n- \"[another]\" — [explanation]\r\n\r\nSuggested action: Choose exactly one of the following and add 1–2 sentences of context:\r\n- No immediate action needed — continue monitoring\r\n- Consider a casual check-in\r\n- Recommend a private follow-up conversation\r\n\r\nGroup dynamics\r\nOne short paragraph on how the students interacted: speaking balance, tone, support shown, any withdrawal or dominance patterns. Use real student names throughout.\r\n\r\nFlags summary\r\n\r\n- Student : Flag | Severity | Basis |\n\r\n- [name] : [readable flag name] | Low / Medium / High | [one-line explanation] |\r\n\r\n\r\nDisclaimer\r\nThis report is generated from speech and conversation metrics and is intended as a supplementary observational tool only. It does not constitute a psychological assessment. Always apply your own professional judgment and consult your school's support staff for any serious concerns.",
+                "reasoningEffort": "low"
+            },
+            "metadata": {
+                "designer": {
+                    "x": -254,
+                    "y": 568,
+                    "name": "Report Agent"
+                },
+                "restore": {
+                    "expect": {
+                        "files": {
+                            "mode": "chose"
+                        },
+                        "outputType": {
+                            "label": "Text"
+                        },
+                        "defaultModel": {
+                            "mode": "chose",
+                            "label": "SmallModel: gpt-5-nano. Reasoning: low. Efficiently handles long conversations and reasoning, delivering smart conclusions quickly"
+                        },
+                        "reasoningEffort": {
+                            "mode": "chose",
+                            "label": "Low"
+                        }
+                    },
+                    "parameters": {
+                        "makeConnectionId": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "ai-provider"
+                            },
+                            "label": "My Make's AI Provider connection"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "makeConnectionId",
+                        "type": "account:ai-provider,openai-gpt-3,anthropic-claude,gemini-ai-q9zyjp,ai-agent-foundry-openai,ai-agent-foundry-non-openai,mistral-ai,cohere,groq,ai-agent-xai,amazon-bedrock,ai-agent-openai-compatible",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "defaultModel",
+                        "type": "select",
+                        "label": "Model",
+                        "required": true
+                    },
+                    {
+                        "name": "reasoningEffort",
+                        "type": "select",
+                        "label": "Reasoning effort",
+                        "validate": {
+                            "enum": [
+                                "low"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "systemPrompt",
+                        "type": "text",
+                        "label": "Instructions"
+                    },
+                    {
+                        "name": "message",
+                        "type": "text",
+                        "label": "Input",
+                        "required": true
+                    },
+                    {
+                        "name": "files",
+                        "spec": [
+                            {
+                                "name": "fileName",
+                                "type": "filename",
+                                "label": "File name",
+                                "semantic": "file:name"
+                            },
+                            {
+                                "name": "data",
+                                "type": "buffer",
+                                "label": "Data",
+                                "semantic": "file:data"
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Input files"
+                    },
+                    {
+                        "name": "threadId",
+                        "type": "text",
+                        "label": "Conversation ID"
+                    },
+                    {
+                        "name": "modelConfig",
+                        "spec": [
+                            {
+                                "name": "tokenLimit",
+                                "type": "hidden",
+                                "label": "Max output tokens"
+                            },
+                            {
+                                "name": "recursionLimit",
+                                "type": "hidden",
+                                "label": "Steps per agent call"
+                            },
+                            {
+                                "name": "iterationsFromHistoryCount",
+                                "type": "number",
+                                "label": "Maximum conversation history"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Model configuration"
+                    },
+                    {
+                        "name": "timeout",
+                        "type": "number",
+                        "label": "Step timeout",
+                        "validate": {
+                            "max": 600,
+                            "min": 120
+                        }
+                    },
+                    {
+                        "name": "outputType",
+                        "type": "select",
+                        "label": "Response format",
+                        "required": true,
+                        "validate": {
+                            "enum": [
+                                "text",
+                                "make-schema"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "tools": []
+        },
+        {
+            "id": 23,
+            "module": "gateway:WebhookRespond",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "body": "{{20.response}}",
+                "status": "200",
+                "headers": []
+            },
+            "metadata": {
+                "designer": {
+                    "x": -247,
+                    "y": 179,
+                    "name": "Send Back to Frontend"
+                },
+                "restore": {
+                    "expect": {
+                        "headers": {
+                            "mode": "chose"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "status",
+                        "type": "uinteger",
+                        "label": "Status",
+                        "required": true,
+                        "validate": {
+                            "min": 100
+                        }
+                    },
+                    {
+                        "name": "body",
+                        "type": "any",
+                        "label": "Body"
+                    },
+                    {
+                        "name": "headers",
+                        "spec": [
+                            {
+                                "name": "key",
+                                "type": "text",
+                                "label": "Key",
+                                "required": true,
+                                "validate": {
+                                    "max": 256
+                                }
+                            },
+                            {
+                                "name": "value",
+                                "type": "text",
+                                "label": "Value",
+                                "required": true,
+                                "validate": {
+                                    "max": 4096
+                                }
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Custom headers",
+                        "validate": {
+                            "maxItems": 16
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "metadata": {
+        "instant": true,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu1.make.com",
+        "notes": []
+    }
+}
