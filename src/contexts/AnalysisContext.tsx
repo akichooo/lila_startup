@@ -1,44 +1,94 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { GROUPS, type Student, type Group } from "@/data/mockData";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export interface StudentResult {
-  student: Student;
-  participationPct: number;
-  speakingTurns: number;
-  engagement: "High" | "Engaged" | "Moderate" | "Low";
-  notable: string;
-  change: string;
-  changeColor: string;
-  flagged: boolean;
-  flagNote?: string;
-}
+const db = supabase as any;
 
-export interface MisinfoCorrectionResult {
-  studentName: string;
-  topic: string;
-  original: string;
-  reframe: string;
-  time: string;
-}
-
-export interface AnalysisResult {
+export interface Student {
   id: string;
-  sessionName: string;
-  topic: string;
-  groupId: string;
-  groupName: string;
-  ageRange: string;
-  date: string;
-  duration: number;
+  name: string;
+  ageRange?: string | null;
+  groupId?: string | null;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  ageRange?: string | null;
+  grade?: string | null;
+  topic?: string | null;
   studentCount: number;
-  overallTone: string;
-  summaryParagraph: string;
-  studentResults: StudentResult[];
-  misinfoCorrection: MisinfoCorrectionResult;
-  highlights: { text: string; time: string; isWarning: boolean }[];
-  followUpActions: { text: string; urgency: string }[];
-  createdAt: number;
+  students: Student[];
+}
+
+export interface SessionRow {
+  id: string;
+  session_name: string;
+  topic: string | null;
+  description: string | null;
+  duration_minutes: number | null;
+  group_id: string | null;
+  audio_url: string | null;
+  recording_path: string | null;
+  status: string;
+  analysis_status?: string | null;
+  speaker_map?: Record<string, any> | null;
+  created_at: string;
+  processed_at?: string | null;
+}
+
+export interface SessionMetric {
+  id: string;
+  session_id: string;
+  group_id: string | null;
+  student_id: string | null;
+  student_name: string | null;
+  speaker_label: string;
+  display_name: string;
+  speaking_turns: number;
+  total_turn_duration_sec: number;
+  avg_turn_duration_sec: number;
+  interruptions: number;
+  response_latency_sec: number | null;
+  words_per_turn: number;
+  questions_asked: number;
+  tone_register: "positive" | "neutral" | "uncertain";
+  topic_relevance: number;
+  participation_pct: number;
+  observation_flags: string[];
+  raw_metrics?: any;
+  created_at: string;
+}
+
+export interface FollowUp {
+  id: string;
+  session_id: string | null;
+  group_id: string | null;
+  student_id: string | null;
+  student_name: string | null;
+  speaker_label: string | null;
+  title: string;
+  body: string | null;
+  flag: string | null;
+  status: "pending" | "done";
+  created_at: string;
+}
+
+export interface TeacherNote {
+  id: string;
+  session_id: string | null;
+  student_id: string | null;
+  note_text: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface SessionReport {
+  id: string;
+  session_id: string;
+  audio_url: string | null;
+  report_text: string;
+  report_json: any;
+  created_at: string;
 }
 
 export interface StudentSessionRecord {
@@ -59,17 +109,20 @@ export interface StudentSessionRecord {
 }
 
 interface AnalysisContextType {
-  analyses: AnalysisResult[];
-  addAnalysis: (a: AnalysisResult) => void;
-  generateAnalysis: (params: {
-    groupId: string;
-    sessionName?: string;
-    topic?: string;
-    duration?: number;
-    audioUrl?: string;
-  }) => AnalysisResult;
+  groups: Group[];
+  students: Student[];
+  sessions: SessionRow[];
+  sessionMetrics: SessionMetric[];
+  followUps: FollowUp[];
+  teacherNotes: TeacherNote[];
+  sessionReports: SessionReport[];
   studentRecords: StudentSessionRecord[];
+  loading: boolean;
+  dataError: string | null;
   refreshRecords: () => Promise<void>;
+  updateFollowUpStatus: (id: string, status: "pending" | "done") => Promise<void>;
+  saveSpeakerMappings: (sessionId: string, mappings: Record<string, string>) => Promise<void>;
+  addTeacherNote: (note: { session_id?: string | null; student_id?: string | null; note_text: string }) => Promise<void>;
 }
 
 const AnalysisContext = createContext<AnalysisContextType | null>(null);
@@ -80,103 +133,95 @@ export function useAnalysis() {
   return ctx;
 }
 
-const TONES = [
-  "Calm and constructive",
-  "Mostly engaged with brief off-topic moments",
-  "Highly engaged with strong peer interaction",
+const SEED_GROUPS: Group[] = [
+  {
+    id: "g1",
+    name: "Group Turtle",
+    ageRange: "6-8",
+    grade: "1-2",
+    topic: "Fair helpers",
+    studentCount: 5,
+    students: [
+      { id: "s1", name: "Lena M.", ageRange: "6-8", groupId: "g1" },
+      { id: "s2", name: "Kai R.", ageRange: "6-8", groupId: "g1" },
+      { id: "s3", name: "Maya S.", ageRange: "6-8", groupId: "g1" },
+      { id: "s4", name: "Noah P.", ageRange: "6-8", groupId: "g1" },
+      { id: "s5", name: "Ari T.", ageRange: "6-8", groupId: "g1" },
+    ],
+  },
+  {
+    id: "g2",
+    name: "Group Fox",
+    ageRange: "8-10",
+    grade: "3-4",
+    topic: "Working through disagreement",
+    studentCount: 5,
+    students: [
+      { id: "s6", name: "Sofia L.", ageRange: "8-10", groupId: "g2" },
+      { id: "s7", name: "Eli W.", ageRange: "8-10", groupId: "g2" },
+      { id: "s8", name: "Amara K.", ageRange: "8-10", groupId: "g2" },
+      { id: "s9", name: "Jonas B.", ageRange: "8-10", groupId: "g2" },
+      { id: "s10", name: "Nina C.", ageRange: "8-10", groupId: "g2" },
+    ],
+  },
+  {
+    id: "g3",
+    name: "Group Robin",
+    ageRange: "10-12",
+    grade: "5-6",
+    topic: "Building trust",
+    studentCount: 4,
+    students: [
+      { id: "s11", name: "Zoe H.", ageRange: "10-12", groupId: "g3" },
+      { id: "s12", name: "Malik J.", ageRange: "10-12", groupId: "g3" },
+      { id: "s13", name: "Iris N.", ageRange: "10-12", groupId: "g3" },
+      { id: "s14", name: "Theo V.", ageRange: "10-12", groupId: "g3" },
+    ],
+  },
 ];
 
-const MISCONCEPTIONS: Record<string, { original: string; reframe: string }[]> = {
-  default: [
-    { original: "Fair always means everyone gets the same thing", reframe: "explored examples where fairness can mean meeting different needs rather than identical treatment" },
-    { original: "Being kind means always agreeing with others", reframe: "discussed how respectful disagreement can also be a form of kindness and honesty" },
-    { original: "You can only be friends with people who are like you", reframe: "introduced the idea that differences can make friendships richer and more interesting" },
-    { original: "Rules are only made to punish people", reframe: "explored how rules can protect everyone and create a safer space for the whole group" },
-    { original: "If someone is quiet they must be bored", reframe: "discussed different ways people participate, including thinking carefully before speaking" },
-  ],
-};
-
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function generateParticipation(count: number): number[] {
-  const raw = Array.from({ length: count }, () => 10 + Math.random() * 30);
-  const sum = raw.reduce((a, b) => a + b, 0);
-  const normalized = raw.map((v) => Math.round((v / sum) * 100));
-  const diff = 100 - normalized.reduce((a, b) => a + b, 0);
-  normalized[0] += diff;
-  return normalized.sort((a, b) => b - a);
-}
-
-function engagementFromPct(pct: number): "High" | "Engaged" | "Moderate" | "Low" {
-  if (pct >= 28) return "High";
-  if (pct >= 22) return "Engaged";
-  if (pct >= 15) return "Moderate";
-  return "Low";
-}
-
-function toneFromPct(pct: number): "positive" | "neutral" | "uncertain" {
-  if (pct >= 25) return "positive";
-  if (pct >= 18) return "neutral";
-  return "uncertain";
-}
-
-function formatNow(): string {
-  const d = new Date();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-async function persistStudentRecords(analysis: AnalysisResult) {
-  const group = GROUPS.find((g) => g.id === analysis.groupId);
-  const records = analysis.studentResults.map((sr) => ({
-    student_id: sr.student.id,
-    student_name: sr.student.name,
-    group_id: analysis.groupId,
-    group_name: analysis.groupName,
-    session_id: analysis.id,
-    session_date: new Date().toISOString(),
-    session_topic: analysis.topic,
-    speaking_turns: sr.speakingTurns,
-    participation_pct: sr.participationPct,
-    tone_signal: toneFromPct(sr.participationPct),
-    flagged: sr.flagged,
-    flag_description: sr.flagNote || null,
-    age_range: group?.ageRange || null,
-  }));
-
-  const { error } = await supabase.from("student_session_records").insert(records);
-  if (error) {
-    console.error("Failed to persist student records:", error);
-    // Fallback to localStorage
-    const existing = JSON.parse(localStorage.getItem("student_session_records") || "[]");
-    localStorage.setItem("student_session_records", JSON.stringify([...existing, ...records]));
-  }
-}
-
 export function AnalysisProvider({ children }: { children: ReactNode }) {
-  const [analyses, setAnalyses] = useState<AnalysisResult[]>(() => {
-    const saved = localStorage.getItem("lila_analyses");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [studentRecords, setStudentRecords] = useState<StudentSessionRecord[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [sessionMetrics, setSessionMetrics] = useState<SessionMetric[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
+  const [teacherNotes, setTeacherNotes] = useState<TeacherNote[]>([]);
+  const [sessionReports, setSessionReports] = useState<SessionReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
-  // Persist analyses to localStorage
-  useEffect(() => {
-    localStorage.setItem("lila_analyses", JSON.stringify(analyses));
-  }, [analyses]);
+  const students = useMemo(() => groups.flatMap((group) => group.students), [groups]);
 
   const refreshRecords = async () => {
-    const { data, error } = await supabase
-      .from("student_session_records")
-      .select("*")
-      .order("session_date", { ascending: true });
-    if (error) {
-      console.error("Failed to fetch records:", error);
-      const fallback = JSON.parse(localStorage.getItem("student_session_records") || "[]");
-      setStudentRecords(fallback);
-    } else {
-      setStudentRecords(data as StudentSessionRecord[]);
+    setLoading(true);
+    setDataError(null);
+    try {
+      await ensureSeedRows();
+      const [groupsRes, studentsRes, sessionsRes, metricsRes, followUpsRes, notesRes, reportsRes] = await Promise.all([
+        db.from("groups").select("*").order("name", { ascending: true }),
+        db.from("students").select("*").order("display_name", { ascending: true }),
+        db.from("sessions").select("*").order("created_at", { ascending: false }),
+        db.from("session_metrics").select("*").order("created_at", { ascending: true }),
+        db.from("follow_ups").select("*").order("created_at", { ascending: false }),
+        db.from("teacher_notes").select("*").order("created_at", { ascending: false }),
+        db.from("session_reports").select("*").order("created_at", { ascending: false }),
+      ]);
+
+      const firstError = [groupsRes, studentsRes, sessionsRes, metricsRes, followUpsRes, notesRes, reportsRes].find((res) => res.error)?.error;
+      if (firstError) throw firstError;
+
+      const grouped = mapGroups(groupsRes.data || [], studentsRes.data || []);
+      setGroups(grouped);
+      setSessions((sessionsRes.data || []) as SessionRow[]);
+      setSessionMetrics(normalizeMetrics(metricsRes.data || []));
+      setFollowUps((followUpsRes.data || []) as FollowUp[]);
+      setTeacherNotes((notesRes.data || []) as TeacherNote[]);
+      setSessionReports((reportsRes.data || []) as SessionReport[]);
+    } catch (error: any) {
+      console.error("Failed to refresh Lila data:", error);
+      setDataError(error?.message || "Unable to load Supabase data");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,128 +229,155 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     refreshRecords();
   }, []);
 
-  const addAnalysis = (a: AnalysisResult) => {
-    setAnalyses((prev) => [a, ...prev]);
+  const studentRecords = useMemo(
+    () => buildStudentRecords(sessionMetrics, sessions, groups),
+    [sessionMetrics, sessions, groups],
+  );
+
+  const updateFollowUpStatus = async (id: string, status: "pending" | "done") => {
+    const { error } = await db
+      .from("follow_ups")
+      .update({ status, completed_at: status === "done" ? new Date().toISOString() : null })
+      .eq("id", id);
+    if (error) throw error;
+    await refreshRecords();
   };
 
-  const generateAnalysis = ({
-    groupId,
-    sessionName,
-    topic,
-    duration,
-  }: {
-    groupId: string;
-    sessionName?: string;
-    topic?: string;
-    duration?: number;
-    audioUrl?: string;
-  }): AnalysisResult => {
-    const group = GROUPS.find((g) => g.id === groupId) || GROUPS[0];
-    const students = group.students;
-    const effectiveTopic = topic || "Discussion Session";
-    const effectiveDuration = duration || (15 + Math.floor(Math.random() * 15));
-    const effectiveName = sessionName || effectiveTopic;
+  const saveSpeakerMappings = async (sessionId: string, mappings: Record<string, string>) => {
+    const speakerMap: Record<string, any> = {};
+    for (const [speakerLabel, studentId] of Object.entries(mappings)) {
+      const student = students.find((item) => item.id === studentId);
+      if (!student) continue;
+      speakerMap[speakerLabel] = { student_id: student.id, student_name: student.name, display_name: student.name };
+      const { error } = await db
+        .from("session_metrics")
+        .update({ student_id: student.id, student_name: student.name, display_name: student.name })
+        .eq("session_id", sessionId)
+        .eq("speaker_label", speakerLabel);
+      if (error) throw error;
+    }
 
-    const pcts = generateParticipation(students.length);
-    const flaggedIdx = pcts.length - 1;
-    const tone = pickRandom(TONES);
-    const misconception = pickRandom(MISCONCEPTIONS.default);
-    const misinfStudent = students[Math.floor(Math.random() * students.length)];
-    const firstName = (s: Student) => s.name.split(" ")[0];
+    const { error: sessionError } = await db.from("sessions").update({ speaker_map: speakerMap }).eq("id", sessionId);
+    if (sessionError) throw sessionError;
+    await refreshRecords();
+  };
 
-    const studentResults: StudentResult[] = students.map((s, i) => {
-      const pct = pcts[i];
-      const turns = Math.max(2, Math.round(pct * effectiveDuration / 100 * 0.6));
-      const eng = engagementFromPct(pct);
-      const isFlagged = i === flaggedIdx;
-
-      const notables = [
-        `Contributed thoughtful observations about ${effectiveTopic.toLowerCase()}.`,
-        `Asked clarifying questions that helped move the discussion forward.`,
-        `Built on peers' ideas with concrete examples.`,
-        `Offered a unique perspective that sparked further conversation.`,
-        `Responded well to facilitator prompts and showed active listening.`,
-      ];
-
-      return {
-        student: s,
-        participationPct: pct,
-        speakingTurns: turns,
-        engagement: eng,
-        notable: isFlagged
-          ? `Responded less frequently than peers during this session. May benefit from a brief check-in.`
-          : pickRandom(notables),
-        change: isFlagged
-          ? "↓ Less active than previous sessions"
-          : pct >= 28
-            ? "↑ More active than recent sessions"
-            : "→ Consistent with prior sessions",
-        changeColor: isFlagged ? "#D97706" : pct >= 28 ? "#059669" : "#7C6FAA",
-        flagged: isFlagged,
-        flagNote: isFlagged
-          ? `${firstName(s)} responded less frequently than peers during this session and may benefit from a brief check-in.`
-          : undefined,
-      };
+  const addTeacherNote = async (note: { session_id?: string | null; student_id?: string | null; note_text: string }) => {
+    const { error } = await db.from("teacher_notes").insert({
+      session_id: note.session_id || null,
+      student_id: note.student_id || null,
+      note_text: note.note_text,
+      created_by: "Teacher",
     });
-
-    const topContributor = studentResults[0];
-    const secondContributor = studentResults[1];
-    const quietStudent = studentResults[studentResults.length - 1];
-
-    const summaryParagraph = `This session explored ${effectiveTopic.toLowerCase()} with ${students.length} students over ${effectiveDuration} minutes. The group was ${tone.toLowerCase()}, with strong contributions from ${firstName(topContributor.student)} and ${firstName(secondContributor.student)} and quieter participation from ${firstName(quietStudent.student)}. The facilitator asked ${5 + Math.floor(Math.random() * 5)} questions and noted one moment where a student's response included a factual oversimplification (see below). Overall discussion tone was ${tone.toLowerCase()}. No disruptive interactions were observed.`;
-
-    const misinfo: MisinfoCorrectionResult = {
-      studentName: firstName(misinfStudent),
-      topic: effectiveTopic,
-      original: misconception.original,
-      reframe: misconception.reframe,
-      time: `${10 + Math.floor(Math.random() * 10)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`,
-    };
-
-    const highlights = [
-      { text: `${firstName(topContributor.student)} offered a strong conceptual distinction using a concrete personal example.`, time: `${10 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: false },
-      { text: `${firstName(secondContributor.student)} connected the discussion to a personal experience unprompted.`, time: `${15 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: false },
-      { text: `${firstName(quietStudent.student)} did not respond to two direct facilitator invitations. The facilitator moved on without pressure.`, time: `${18 + Math.floor(Math.random() * 5)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")}`, isWarning: true },
-    ];
-
-    const followUpActions = [
-      { text: `Check in briefly with ${firstName(quietStudent.student)} to see how they're doing this week.`, urgency: "Low urgency" },
-      { text: `Consider pairing ${firstName(topContributor.student)} and ${firstName(quietStudent.student)} together in a warm-up activity next session.`, urgency: "Pedagogical suggestion" },
-      { text: `Extend the ${effectiveTopic.toLowerCase()} topic next session — the group showed strong curiosity and unresolved questions.`, urgency: "Curriculum suggestion" },
-    ];
-
-    const id = `analysis_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-
-    const result: AnalysisResult = {
-      id,
-      sessionName: effectiveName,
-      topic: effectiveTopic,
-      groupId,
-      groupName: group.name,
-      ageRange: group.ageRange,
-      date: formatNow(),
-      duration: effectiveDuration,
-      studentCount: students.length,
-      overallTone: tone,
-      summaryParagraph,
-      studentResults,
-      misinfoCorrection: misinfo,
-      highlights,
-      followUpActions,
-      createdAt: Date.now(),
-    };
-
-    addAnalysis(result);
-
-    // Persist student records to Supabase
-    persistStudentRecords(result).then(() => refreshRecords());
-
-    return result;
+    if (error) throw error;
+    await refreshRecords();
   };
 
   return (
-    <AnalysisContext.Provider value={{ analyses, addAnalysis, generateAnalysis, studentRecords, refreshRecords }}>
+    <AnalysisContext.Provider
+      value={{
+        groups,
+        students,
+        sessions,
+        sessionMetrics,
+        followUps,
+        teacherNotes,
+        sessionReports,
+        studentRecords,
+        loading,
+        dataError,
+        refreshRecords,
+        updateFollowUpStatus,
+        saveSpeakerMappings,
+        addTeacherNote,
+      }}
+    >
       {children}
     </AnalysisContext.Provider>
   );
+}
+
+async function ensureSeedRows() {
+  const { data, error } = await db.from("groups").select("id").limit(1);
+  if (error) throw error;
+  if (data && data.length > 0) return;
+
+  const groupRows = SEED_GROUPS.map((group) => ({
+    id: group.id,
+    name: group.name,
+    grade: group.grade,
+    student_count: group.studentCount,
+    topic: group.topic,
+  }));
+  const studentRows = SEED_GROUPS.flatMap((group) =>
+    group.students.map((student) => ({
+      id: student.id,
+      group_id: group.id,
+      display_name: student.name,
+      age_range: student.ageRange,
+    })),
+  );
+
+  const { error: groupError } = await db.from("groups").upsert(groupRows, { onConflict: "id" });
+  if (groupError) throw groupError;
+  const { error: studentError } = await db.from("students").upsert(studentRows, { onConflict: "id" });
+  if (studentError) throw studentError;
+}
+
+function mapGroups(groupRows: any[], studentRows: any[]): Group[] {
+  return groupRows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    grade: row.grade,
+    topic: row.topic,
+    studentCount: row.student_count || studentRows.filter((student) => student.group_id === row.id).length,
+    ageRange: null,
+    students: studentRows
+      .filter((student) => student.group_id === row.id)
+      .map((student) => ({
+        id: student.id,
+        name: student.display_name,
+        ageRange: student.age_range,
+        groupId: student.group_id,
+      })),
+  }));
+}
+
+function normalizeMetrics(rows: any[]): SessionMetric[] {
+  return rows.map((row) => ({
+    ...row,
+    total_turn_duration_sec: Number(row.total_turn_duration_sec || 0),
+    avg_turn_duration_sec: Number(row.avg_turn_duration_sec || 0),
+    response_latency_sec: row.response_latency_sec === null ? null : Number(row.response_latency_sec || 0),
+    words_per_turn: Number(row.words_per_turn || 0),
+    topic_relevance: Number(row.topic_relevance || 0),
+    participation_pct: Number(row.participation_pct || 0),
+    observation_flags: row.observation_flags || [],
+  }));
+}
+
+function buildStudentRecords(metrics: SessionMetric[], sessions: SessionRow[], groups: Group[]): StudentSessionRecord[] {
+  return metrics
+    .filter((metric) => metric.student_id)
+    .map((metric) => {
+      const session = sessions.find((item) => item.id === metric.session_id);
+      const group = groups.find((item) => item.id === metric.group_id);
+      return {
+        id: metric.id,
+        student_id: metric.student_id || "",
+        student_name: metric.student_name || metric.display_name,
+        group_id: metric.group_id || "",
+        group_name: group?.name || "Unassigned group",
+        session_id: metric.session_id,
+        session_date: session?.processed_at || session?.created_at || metric.created_at,
+        session_topic: session?.topic || "General discussion",
+        speaking_turns: metric.speaking_turns,
+        participation_pct: Math.round(metric.participation_pct),
+        tone_signal: metric.tone_register,
+        flagged: metric.observation_flags.length > 0,
+        flag_description: metric.observation_flags.join(", ") || null,
+        age_range: group?.ageRange || null,
+      };
+    })
+    .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
 }

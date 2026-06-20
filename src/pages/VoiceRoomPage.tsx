@@ -44,7 +44,7 @@ const AGE_THEMES: Record<AgeGroup, { label: string; mascotName: string; personal
     label: "Ages 11–12 · Zap & Zing",
     mascotName: "Zap & Zing",
     personality: "Thoughtful & Grounded",
-    desc: "For older students, Lila introduces layered concepts, invites reflection on multiple perspectives, and respects more complex emotional registers.",
+    desc: "For older students, Lila introduces layered concepts, invites reflection on multiple perspectives, and respects more nuanced discussion registers.",
     sampleQ: '"Is it possible to disagree with a rule and still think it\'s fair? How would you argue both sides?"',
     badges: "Multi-perspective prompts · Reflective tone · Complex concepts",
     gradient: "linear-gradient(135deg, #F0FFF4 0%, #FFF0F9 100%)",

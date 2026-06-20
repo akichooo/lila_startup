@@ -1,246 +1,183 @@
-import { useState, useEffect } from "react";
-import { AppShell } from "@/components/bridge/AppShell";
-import { StudentAvatar, DisclaimerBanner, SectionHeader } from "@/components/bridge/SharedComponents";
-import { STUDENTS, GROUPS } from "@/data/mockData";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, LineChart as LineIcon } from "lucide-react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, AreaChart, Area,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
-import { useAnalysis, type StudentSessionRecord } from "@/contexts/AnalysisContext";
+import { AppShell } from "@/components/bridge/AppShell";
+import { useAnalysis } from "@/contexts/AnalysisContext";
 
-function trendLabel(records: StudentSessionRecord[]): { label: string; color: string } {
-  if (records.length < 3) return { label: "Insufficient data", color: "#7C6FAA" };
-  const last3 = records.slice(-3).map((r) => r.participation_pct);
-  const trend = last3[2] - last3[0];
-  if (trend > 3) return { label: "Improving", color: "#059669" };
-  if (trend < -3) return { label: "Declining", color: "#D97706" };
-  return { label: "Consistent", color: "#7C6FAA" };
-}
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
+const toneScore: Record<string, number> = { uncertain: -1, neutral: 0, positive: 1 };
+const toneLabel: Record<number, string> = { [-1]: "uncertain", 0: "neutral", 1: "positive" };
 
 export default function TrendsPage() {
-  const [selectedStudent, setSelectedStudent] = useState("s1");
-  const [timeRange, setTimeRange] = useState("all");
-  const { studentRecords, refreshRecords } = useAnalysis();
+  const { students, groups, studentRecords, sessionMetrics, sessions, loading, dataError } = useAnalysis();
+  const studentsWithRecords = useMemo(
+    () => students.filter((student) => studentRecords.some((record) => record.student_id === student.id)),
+    [students, studentRecords],
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState("");
 
-  useEffect(() => { refreshRecords(); }, []);
+  useEffect(() => {
+    if (!selectedStudentId && studentsWithRecords.length > 0) {
+      setSelectedStudentId(studentsWithRecords[0].id);
+    }
+  }, [selectedStudentId, studentsWithRecords]);
 
-  const student = STUDENTS.find((s) => s.id === selectedStudent) || STUDENTS[0];
-  const studentGroup = GROUPS.find((g) => g.students.some((s) => s.id === selectedStudent));
+  const selectedStudent = students.find((student) => student.id === selectedStudentId) || studentsWithRecords[0];
+  const selectedGroup = groups.find((group) => group.students.some((student) => student.id === selectedStudent?.id));
+  const records = studentRecords.filter((record) => record.student_id === selectedStudent?.id);
+  const metricRows = sessionMetrics.filter((metric) => metric.student_id === selectedStudent?.id);
 
-  // Filter records for selected student
-  let records = studentRecords.filter((r) => r.student_id === selectedStudent);
-  if (timeRange === "4") records = records.slice(-4);
-  else if (timeRange === "8") records = records.slice(-8);
-
-  const participationData = records.map((r) => ({
-    session: formatDate(r.session_date),
-    value: r.participation_pct,
+  const chartRows = records.map((record, index) => ({
+    index: index + 1,
+    label: new Date(record.session_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    topic: record.session_topic,
+    speaking_turns: record.speaking_turns,
+    participation_pct: record.participation_pct,
+    tone_score: toneScore[record.tone_signal] ?? 0,
+    tone_signal: record.tone_signal,
   }));
 
-  const speakingData = records.map((r) => ({
-    session: formatDate(r.session_date),
-    value: r.speaking_turns,
-  }));
-
-  const toneData = records.map((r) => ({
-    session: formatDate(r.session_date),
-    positive: r.tone_signal === "positive" ? 100 : 0,
-    neutral: r.tone_signal === "neutral" ? 100 : 0,
-    uncertain: r.tone_signal === "uncertain" ? 100 : 0,
-  }));
-
-  const withdrawalData = records.map((r) => ({
-    session: formatDate(r.session_date),
-    value: r.flagged ? 1 : 0,
-  }));
-
-  const trend = trendLabel(records);
-
-  const followUps = records
-    .filter((r) => r.flagged && r.flag_description)
-    .map((r) => ({
-      date: formatDate(r.session_date),
-      text: r.flag_description || "",
-      status: "Pending" as const,
-    }));
-
-  const hasData = records.length > 0;
+  const avgParticipation = average(chartRows.map((row) => row.participation_pct));
+  const avgTurns = average(chartRows.map((row) => row.speaking_turns));
+  const latestMetric = metricRows[metricRows.length - 1];
+  const latestSession = sessions.find((session) => session.id === latestMetric?.session_id);
 
   return (
     <AppShell pageTitle="Student Trends">
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <span className="text-sm" style={{ color: "#7C6FAA" }}>Viewing:</span>
-          <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-            <SelectTrigger className="w-44 rounded-2xl" style={{ background: "#F5F3FF", borderColor: "#EDE9FF" }}><SelectValue /></SelectTrigger>
-            <SelectContent>{STUDENTS.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        {studentGroup && <span className="lila-badge-purple">{studentGroup.name}</span>}
-        <span className="text-sm" style={{ color: "#7C6FAA" }}>{student.grade} Grade</span>
-        <div className="flex gap-1 ml-auto">
-          {[{ l: "Last 4", v: "4" }, { l: "Last 8", v: "8" }, { l: "All time", v: "all" }].map((r) => (
-            <button
-              key={r.v}
-              onClick={() => setTimeRange(r.v)}
-              className="px-3 py-1 rounded-full text-xs font-bold transition-colors"
-              style={timeRange === r.v ? { background: "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)", color: "white" } : { background: "#EDE9FF", color: "#7C6FAA" }}
-            >
-              {r.l}
-            </button>
-          ))}
-        </div>
-        <button className="lila-btn-secondary text-xs !py-1.5 !px-4 flex items-center gap-1"><Download className="h-4 w-4" /> Export</button>
-      </div>
-
-      <DisclaimerBanner>
-        All trends shown here reflect observational participation signals from Lila-facilitated sessions. They do not constitute a psychological, behavioral, or diagnostic assessment. Teacher judgment is required for any decisions or actions.
-      </DisclaimerBanner>
-
-      {!hasData && (
-        <div className="lila-card mt-6 text-center py-12">
-          <p className="text-lg font-bold" style={{ color: "#2D1B69" }}>No session data yet for {student.name}</p>
-          <p className="text-sm mt-2" style={{ color: "#7C6FAA" }}>Run an analysis on a session that includes this student to see their trends here.</p>
-        </div>
-      )}
-
-      {hasData && (
-        <>
-          <div className="grid gap-6 md:grid-cols-2 mt-6">
-            <div className="lila-card">
-              <p className="lila-label mb-1">Participation Over Time</p>
-              <p className="text-xs mb-3" style={{ color: trend.color }}>
-                Participation trend: {trend.label}
-                {records.length >= 3 ? ` over last ${Math.min(records.length, 3)} sessions` : ""}
-              </p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={participationData}>
-                    <XAxis dataKey="session" tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#7C6FAA" }} domain={[0, 100]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="value" stroke="#A78BFA" strokeWidth={2} dot={{ r: 3 }} name="Participation %" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="lila-card">
-              <p className="lila-label mb-1">Speaking Turns</p>
-              <p className="text-xs mb-3" style={{ color: "#7C6FAA" }}>Number of speaking turns per session</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={speakingData}>
-                    <XAxis dataKey="session" tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#A78BFA" radius={[8, 8, 0, 0]} name="Turns" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="lila-card">
-              <p className="lila-label mb-1">Non-Response / Flag Trend</p>
-              <p className="text-xs mb-3" style={{ color: withdrawalData.some((d) => d.value > 0) ? "#D97706" : "#7C6FAA" }}>
-                {withdrawalData.some((d) => d.value > 0) ? "Flags detected — worth monitoring" : "No flags observed"}
-              </p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={withdrawalData}>
-                    <XAxis dataKey="session" tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#7C6FAA" }} domain={[0, 2]} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="value" fill="#FDBA74" fillOpacity={0.2} stroke="#FDBA74" strokeWidth={2} name="Flags" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="lila-card">
-              <p className="lila-label mb-1">Emotional Tone Trend</p>
-              <p className="text-xs mb-3" style={{ color: "#7C6FAA" }}>Tone signal per session</p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={toneData}>
-                    <XAxis dataKey="session" tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#7C6FAA" }} />
-                    <Tooltip />
-                    <Bar dataKey="positive" stackId="a" fill="#6EE7B7" name="Positive" />
-                    <Bar dataKey="neutral" stackId="a" fill="#EDE9FF" name="Neutral" />
-                    <Bar dataKey="uncertain" stackId="a" fill="#FDBA74" name="Uncertain" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+      <div className="space-y-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="lila-label">Student Trends</p>
+            <h1>Participation Over Time</h1>
+            <p className="text-sm mt-2 max-w-2xl" style={{ color: "#7C6FAA" }}>
+              Trends are built from persisted `session_metrics` rows. They are observational signals requiring teacher review.
+            </p>
           </div>
+          <select
+            value={selectedStudent?.id || ""}
+            onChange={(event) => setSelectedStudentId(event.target.value)}
+            className="rounded-2xl border px-4 py-3 bg-white min-w-[240px]"
+            style={{ borderColor: "#EDE9FF", color: "#2D1B69" }}
+            disabled={studentsWithRecords.length === 0}
+          >
+            {studentsWithRecords.map((student) => (
+              <option key={student.id} value={student.id}>
+                {student.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Session Detail Table */}
-          <div className="lila-card mt-6">
-            <SectionHeader title="Session History" />
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #EDE9FF" }}>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Date</th>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Topic</th>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Participation</th>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Turns</th>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Tone</th>
-                    <th className="text-left py-2 px-3 font-bold" style={{ color: "#7C6FAA" }}>Flagged</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...records].reverse().map((r) => (
-                    <tr key={r.id} style={{ borderBottom: "1px solid #F5F3FF" }}>
-                      <td className="py-2 px-3" style={{ color: "#2D1B69" }}>{formatDate(r.session_date)}</td>
-                      <td className="py-2 px-3" style={{ color: "#2D1B69" }}>{r.session_topic}</td>
-                      <td className="py-2 px-3 font-bold" style={{ color: "#2D1B69" }}>{r.participation_pct}%</td>
-                      <td className="py-2 px-3" style={{ color: "#2D1B69" }}>{r.speaking_turns}</td>
-                      <td className="py-2 px-3">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full`} style={{
-                          background: r.tone_signal === "positive" ? "#ECFDF5" : r.tone_signal === "uncertain" ? "#FFF7ED" : "#F5F3FF",
-                          color: r.tone_signal === "positive" ? "#059669" : r.tone_signal === "uncertain" ? "#D97706" : "#7C6FAA",
-                        }}>{r.tone_signal}</span>
-                      </td>
-                      <td className="py-2 px-3">
-                        {r.flagged ? <span className="text-xs font-bold" style={{ color: "#D97706" }}>⚠️ Yes</span> : <span className="text-xs" style={{ color: "#A89DC4" }}>—</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {dataError && (
+          <div className="rounded-2xl p-4 flex gap-3" style={{ background: "#FEF2F2", border: "1.5px solid #FECACA" }}>
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm text-red-700">{dataError}</p>
           </div>
+        )}
 
-          {/* Follow-ups */}
-          {followUps.length > 0 && (
-            <div className="grid gap-6 md:grid-cols-2 mt-6">
-              <div className="lila-card">
-                <SectionHeader title="Follow-Up Status" />
-                <div className="space-y-3">
-                  {followUps.map((f, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" style={{ color: "#FDBA74" }} />
-                      <div className="flex-1">
-                        <p className="text-sm" style={{ color: "#2D1B69" }}>{f.text}</p>
-                        <p className="text-xs" style={{ color: "#A89DC4" }}>{f.date}</p>
-                      </div>
-                      <span className="text-xs font-bold" style={{ color: "#D97706" }}>{f.status}</span>
-                    </div>
-                  ))}
+        {!loading && !selectedStudent && (
+          <div className="lila-card-elevated text-center">
+            <LineIcon className="h-10 w-10 mx-auto mb-3" style={{ color: "#7C3AED" }} />
+            <h2>No trend data yet</h2>
+            <p className="text-sm mt-2" style={{ color: "#7C6FAA" }}>
+              Upload and analyze sessions, then map speaker labels to students to populate trends.
+            </p>
+          </div>
+        )}
+
+        {selectedStudent && (
+          <>
+            <div className="grid gap-4 md:grid-cols-4">
+              <MetricCard label="Student" value={selectedStudent.name} />
+              <MetricCard label="Group" value={selectedGroup?.name || "Unassigned"} />
+              <MetricCard label="Sessions" value={records.length} />
+              <MetricCard label="Avg Participation" value={`${avgParticipation.toFixed(1)}%`} />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <TrendCard title="Participation Share" rows={chartRows} yKey="participation_pct" yLabel="Percent" />
+              <TrendCard title="Speaking Turns" rows={chartRows} yKey="speaking_turns" yLabel="Turns" />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
+              <section className="lila-card-elevated">
+                <h2 className="text-xl mb-4">Tone-Register Trend</h2>
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartRows}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#EDE9FF" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                      <YAxis domain={[-1, 1]} ticks={[-1, 0, 1]} tickFormatter={(value) => toneLabel[value] || ""} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(value: number) => toneLabel[value] || value} labelFormatter={(label) => `Session ${label}`} />
+                      <Line type="monotone" dataKey="tone_score" stroke="#7C3AED" strokeWidth={3} dot={{ r: 5 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-              </div>
+              </section>
+
+              <section className="lila-card-elevated">
+                <h2 className="text-xl mb-4">Latest Session</h2>
+                {latestMetric ? (
+                  <div className="space-y-3 text-sm" style={{ color: "#2D1B69" }}>
+                    <p><strong>Session:</strong> {latestSession?.session_name || "Session"}</p>
+                    <p><strong>Speaking turns:</strong> {latestMetric.speaking_turns}</p>
+                    <p><strong>Words per turn:</strong> {latestMetric.words_per_turn.toFixed(1)}</p>
+                    <p><strong>Questions asked:</strong> {latestMetric.questions_asked}</p>
+                    <p><strong>Topic overlap:</strong> {latestMetric.topic_relevance.toFixed(2)}</p>
+                    <p><strong>Teacher review flags:</strong> {latestMetric.observation_flags.join(", ") || "none"}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: "#7C6FAA" }}>No session metrics for this student yet.</p>
+                )}
+              </section>
             </div>
-          )}
-        </>
-      )}
+
+            <div className="rounded-2xl p-4 text-sm" style={{ background: "#F5F3FF", border: "1.5px solid #EDE9FF", color: "#7C6FAA" }}>
+              All trends shown here reflect observational participation signals from Lila-facilitated sessions. They do not constitute a psychological, behavioral, or diagnostic assessment. Teacher judgment is required for any decisions or actions.
+            </div>
+          </>
+        )}
+      </div>
     </AppShell>
   );
+}
+
+function TrendCard({ title, rows, yKey, yLabel }: { title: string; rows: any[]; yKey: string; yLabel: string }) {
+  return (
+    <section className="lila-card-elevated">
+      <h2 className="text-xl mb-4">{title}</h2>
+      <div className="h-[260px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#EDE9FF" />
+            <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} label={{ value: yLabel, angle: -90, position: "insideLeft", style: { fontSize: 11 } }} />
+            <Tooltip labelFormatter={(label) => `Session ${label}`} />
+            <Line type="monotone" dataKey={yKey} stroke="#7C3AED" strokeWidth={3} dot={{ r: 5 }} connectNulls />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="lila-stat-card">
+      <p className="text-2xl font-extrabold truncate" style={{ color: "#2D1B69" }}>{value}</p>
+      <p className="text-sm" style={{ color: "#7C6FAA" }}>{label}</p>
+    </div>
+  );
+}
+
+function average(values: number[]) {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }

@@ -10,13 +10,15 @@ const STAGES = [
   "Identifying speakers and turn-taking patterns",
   "Measuring participation balance across students",
   "Reviewing topic engagement signals",
-  "Checking conversational tone",
+  "Checking tone-register wording",
   "Preparing your session summary",
 ];
 
 interface AnalysisProcessingScreenProps {
-  onComplete: () => void;
+  onComplete?: () => void;
   ageRange?: "6-8" | "9-10" | "11-12";
+  topic?: string;
+  studentCount?: number;
 }
 
 function MascotForAge({ ageRange, state }: { ageRange: string; state: "thinking" | "speaking" }) {
@@ -47,8 +49,10 @@ export default function AnalysisProcessingScreen({ onComplete, ageRange = "6-8" 
       const mascotSound = ageRange === "9-10" ? "mascot-tangerine" : ageRange === "11-12" ? "mascot-zapzing" : "mascot-blobby";
       play("success");
       setTimeout(() => play(mascotSound as any), 300);
-      const t = setTimeout(onComplete, 800);
-      return () => clearTimeout(t);
+      const t = onComplete ? setTimeout(onComplete, 800) : undefined;
+      return () => {
+        if (t) clearTimeout(t);
+      };
     }
     const delay = 1000 + Math.random() * 1000;
     const t = setTimeout(() => setCompletedStages((p) => p + 1), delay);

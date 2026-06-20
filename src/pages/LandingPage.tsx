@@ -145,7 +145,7 @@ export default function LandingPage() {
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">Introducing Lila Voice Room</h2>
           <p className="text-white/80 max-w-2xl mx-auto mb-8">
-            Soon, Lila will hold live spoken group discussions with your students — age-appropriate, educationally guided, and emotionally safe.
+            Soon, Lila will hold live spoken group discussions with your students — age-appropriate, educationally guided, and developmentally safe.
           </p>
           <div className="flex justify-center gap-4">
             <Link to="/voice-room">

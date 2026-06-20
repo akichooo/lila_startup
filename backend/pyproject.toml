@@ -1,0 +1,21 @@
+[project]
+name = "lila-backend"
+version = "0.2.0"
+description = "Standalone Lila audio analysis backend"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "faster-whisper>=1.1.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.7.0",
+    "python-multipart>=0.0.9",
+    "requests>=2.32.0",
+    "vaderSentiment>=3.3.2",
+]
+
+[project.scripts]
+lila-backend = "lila_workflow.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lila_workflow*"]

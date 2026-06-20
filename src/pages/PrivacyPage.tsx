@@ -3,6 +3,7 @@ import { SectionHeader } from "@/components/bridge/SharedComponents";
 import { Shield, X, Check, Minus } from "lucide-react";
 
 const collectedData = [
+  { type: "Audio recordings", what: "Uploaded or recorded session audio", usage: "Transcription and speaker grouping" },
   { type: "Session transcripts", what: "Text log of student in-session speech", usage: "Generating post-session summaries" },
   { type: "Participation signals", what: "Speaking turn counts, response patterns", usage: "Participation trend charts" },
   { type: "Interaction patterns", what: "Pauses, topic switches, invitation responses", usage: "Observational trend signals" },
@@ -10,7 +11,7 @@ const collectedData = [
   { type: "Session metadata", what: "Date, time, topic, group, duration", usage: "Session history, scheduling" },
 ];
 
-const notCollected = ["Audio recordings", "Video", "Location data", "Personal family information", "Health or medical data", "Data from outside Lila sessions"];
+const notCollected = ["Video", "Location data", "Personal family information", "Health or medical data", "Data from outside Lila sessions"];
 
 const accessRoles = [
   { role: "Teacher (own students)", summaries: true, transcripts: true, trends: true, notes: true, exportData: true, deleteData: false },
@@ -134,6 +135,7 @@ export default function PrivacyPage() {
           <SectionHeader title="Data Retention" />
           <div className="space-y-2 text-sm">
             {[
+              ["Audio recordings", "Retained according to school policy or deleted after processing"],
               ["Session transcripts", "Retained for 12 months, then auto-deleted"],
               ["Participation trend data", "Retained for duration of enrollment"],
               ["Teacher notes", "Retained until manually deleted by teacher or admin"],
