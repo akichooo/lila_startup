@@ -1,7 +1,15 @@
 import { Link } from "react-router-dom";
-import { AlertCircle, Calendar, CheckCircle2, Clock, Database, LineChart, Plus, Users } from "lucide-react";
+import { AlertCircle, Calendar, CheckCircle2, ClipboardList, Clock, Database, LineChart, Plus, Users } from "lucide-react";
 import { AppShell } from "@/components/bridge/AppShell";
+import { InfoTooltip, StatCard as SharedStatCard } from "@/components/bridge/SharedComponents";
 import { useAnalysis } from "@/contexts/AnalysisContext";
+
+const GRADIENTS = [
+  "linear-gradient(135deg, #A78BFA, #C4B5FD)",
+  "linear-gradient(135deg, #6EE7B7, #7DD3FC)",
+  "linear-gradient(135deg, #FDBA74, #FCD34D)",
+  "linear-gradient(135deg, #FB7185, #FDBA74)",
+];
 
 export default function DashboardPage() {
   const { groups, sessions, sessionMetrics, followUps, loading, dataError, updateFollowUpStatus } = useAnalysis();
@@ -14,24 +22,28 @@ export default function DashboardPage() {
   return (
     <AppShell pageTitle="Dashboard">
       <div className="space-y-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="lila-label">Teacher Dashboard</p>
-            <h1>Classroom Discussion Signals</h1>
-            <p className="text-sm mt-2 max-w-2xl" style={{ color: "#7C6FAA" }}>
-              All counts and follow-ups below are read from Supabase tables populated by the analysis backend.
-            </p>
+        <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #EDE9FF 0%, #FCE7F3 50%, #E0F2FE 100%)" }}>
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="lila-label">Teacher Dashboard</p>
+              <h1>Classroom Discussion Signals</h1>
+              <p className="mt-2 max-w-2xl" style={{ color: "#7C6FAA" }}>
+                {processedSessions.length} processed summaries, {pendingFollowUps.length} pending follow-ups, and longitudinal metrics saved in Supabase.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/upload" className="lila-btn-secondary inline-flex items-center gap-2 text-sm !py-2.5 !px-5">
+                <Database className="h-4 w-4" />
+                Upload Audio
+              </Link>
+              <Link to="/sessions/create" className="lila-btn-primary inline-flex items-center gap-2 text-sm !py-2.5 !px-5">
+                <Plus className="h-4 w-4" />
+                New Session
+              </Link>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <Link to="/upload" className="lila-btn-secondary inline-flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Upload Audio
-            </Link>
-            <Link to="/sessions/create" className="lila-btn-primary inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              New Session
-            </Link>
-          </div>
+          <div className="absolute top-5 right-32 h-8 w-8 rounded-full opacity-30" style={{ background: "#A78BFA" }} />
+          <div className="absolute bottom-5 left-28 h-5 w-5 rounded-full opacity-25" style={{ background: "#FB7185" }} />
         </div>
 
         {dataError && (
@@ -42,10 +54,17 @@ export default function DashboardPage() {
         )}
 
         <div className="grid gap-4 md:grid-cols-4">
-          <StatCard icon={<Calendar />} label="Processed Sessions" value={loading ? "..." : processedSessions.length} />
-          <StatCard icon={<Users />} label="Students with Metrics" value={loading ? "..." : activeStudents} />
-          <StatCard icon={<LineChart />} label="Speaking Turns" value={loading ? "..." : totalTurns} />
-          <StatCard icon={<AlertCircle />} label="Pending Follow-ups" value={loading ? "..." : pendingFollowUps.length} />
+          <SharedStatCard title="Processed Sessions" value={loading ? "..." : processedSessions.length} subtitle="Saved session reports" gradientBar={GRADIENTS[0]} icon={<Calendar className="h-5 w-5" />} />
+          <SharedStatCard title="Students with Metrics" value={loading ? "..." : activeStudents} subtitle="Mapped across sessions" gradientBar={GRADIENTS[1]} icon={<Users className="h-5 w-5" />} />
+          <SharedStatCard title="Speaking Turns" value={loading ? "..." : totalTurns} subtitle="Processed transcript turns" gradientBar={GRADIENTS[2]} icon={<LineChart className="h-5 w-5" />} />
+          <SharedStatCard
+            title="Pending Follow-Ups"
+            value={loading ? "..." : pendingFollowUps.length}
+            subtitle="Teacher review queue"
+            gradientBar={GRADIENTS[3]}
+            icon={<ClipboardList className="h-5 w-5" />}
+            badge={<span className="lila-badge-amber">{pendingFollowUps.length}</span>}
+          />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -111,7 +130,7 @@ export default function DashboardPage() {
         </div>
 
         <section className="lila-card-elevated">
-          <SectionHeader title="Observational Signals Requiring Review" />
+          <SectionHeader title={<span className="flex items-center">Observational Signals Requiring Review <InfoTooltip text="These are transcript and timing patterns from the backend. They are not mental-health findings or diagnoses." /></span>} />
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {flaggedMetrics.slice(0, 9).map((metric) => {
               const session = sessions.find((item) => item.id === metric.session_id);
@@ -131,19 +150,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
-  return (
-    <div className="lila-stat-card">
-      <div className="h-10 w-10 rounded-2xl flex items-center justify-center mb-3" style={{ background: "#EDE9FF", color: "#7C3AED" }}>
-        {icon}
-      </div>
-      <p className="text-3xl font-extrabold" style={{ color: "#2D1B69" }}>{value}</p>
-      <p className="text-sm" style={{ color: "#7C6FAA" }}>{label}</p>
-    </div>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title }: { title: React.ReactNode }) {
   return (
     <div className="lila-section-header">
       <h2 className="text-xl">{title}</h2>

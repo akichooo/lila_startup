@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle, Mic, Square, Upload } from "lucide-react";
 import { AppShell } from "@/components/bridge/AppShell";
 import AnalysisProcessingScreen from "@/components/analysis/AnalysisProcessingScreen";
 import AnalysisReportViewer from "@/components/analysis/AnalysisReportViewer";
+import Blobby from "@/components/mascots/Blobby";
 import { useAnalysis } from "@/contexts/AnalysisContext";
 import { analyzeAudio } from "@/lib/lilaBackend";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,7 @@ export default function CreateSessionPage() {
   const chunksRef = useRef<Blob[]>([]);
 
   const group = useMemo(() => groups.find((item) => item.id === groupId) || groups[0], [groups, groupId]);
+  const activeStep = state === "done" ? 3 : state === "analyzing" ? 3 : state === "uploading" ? 2 : 1;
 
   const startRecording = async () => {
     setError("");
@@ -117,12 +119,35 @@ export default function CreateSessionPage() {
   return (
     <AppShell pageTitle="Create Session">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div>
+        <div className="max-w-[760px] mx-auto text-center">
           <p className="lila-label">New Session</p>
           <h1>Record a Discussion</h1>
-          <p className="text-sm mt-2 max-w-2xl" style={{ color: "#7C6FAA" }}>
+          <p className="text-sm mt-2" style={{ color: "#7C6FAA" }}>
             Record classroom audio, send it to the standalone backend, and save observational metrics to Supabase.
           </p>
+        </div>
+
+        <div className="flex items-center justify-center gap-2">
+          {[
+            [1, "Setup"],
+            [2, "Upload"],
+            [3, "Analyze"],
+          ].map(([step, label]) => (
+            <div key={step} className="flex items-center gap-2">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+                style={
+                  activeStep >= Number(step)
+                    ? { background: "linear-gradient(135deg, #A78BFA 0%, #FB7185 100%)", color: "white" }
+                    : { background: "#EDE9FF", color: "#7C6FAA" }
+                }
+              >
+                {step}
+              </div>
+              <span className="hidden sm:inline text-sm font-bold" style={{ color: activeStep >= Number(step) ? "#2D1B69" : "#A89DC4" }}>{label}</span>
+              {Number(step) < 3 && <div className="h-0.5 w-8 rounded-full" style={{ background: activeStep > Number(step) ? "#A78BFA" : "#EDE9FF" }} />}
+            </div>
+          ))}
         </div>
 
         {dataError && (
@@ -133,7 +158,17 @@ export default function CreateSessionPage() {
         )}
 
         {(state === "idle" || state === "recording" || state === "uploading" || state === "error") && (
-          <div className="lila-card-elevated space-y-5">
+          <div className="lila-card-elevated space-y-5 max-w-[760px] mx-auto">
+            <div className="flex flex-col items-center gap-2">
+              <Blobby size={150} state={state === "recording" ? "speaking" : state === "uploading" ? "thinking" : "idle"} />
+              <div
+                className="rounded-2xl px-4 py-2 text-sm font-semibold text-center"
+                style={{ background: "#F5F3FF", color: "#2D1B69", border: "1.5px solid #EDE9FF" }}
+              >
+                {state === "recording" ? "Recording in progress. Stop when the group discussion is finished." : "Set the group and topic, then start recording."}
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               <label className="space-y-2 md:col-span-1">
                 <span className="lila-label">Group</span>
